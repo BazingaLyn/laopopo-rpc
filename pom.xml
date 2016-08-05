@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.bazinga</groupId>
+  <artifactId>laopopo</artifactId>
+  <version>1.0.0</version>
+  <packaging>pom</packaging>
+  <modules>
+    <module>laopopo-common</module>
+    <module>laopopo-registry</module>
+    <module>laopopo-monitor</module>
+    <module>laopopo-registry-default</module>
+    <module>laopopo-registry-zookeeper</module>
+  </modules>
+</project>
