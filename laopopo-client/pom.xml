@@ -7,8 +7,8 @@
     <artifactId>laopopo</artifactId>
     <version>1.0.0</version>
   </parent>
-  <artifactId>laopopo-registry-default</artifactId>
-  <name>laopopo-registry-default</name>
+  <artifactId>laopopo-client</artifactId>
+  <name>laopopo-client</name>
   <url>http://maven.apache.org</url>
   
 </project>
