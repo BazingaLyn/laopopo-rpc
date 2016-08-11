@@ -6,10 +6,12 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.DefaultMessageSizeEstimator;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.WriteBufferWaterMark;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
@@ -35,12 +37,21 @@ import org.laopopo.remoting.exception.RemotingSendRequestException;
 import org.laopopo.remoting.exception.RemotingTimeoutException;
 import org.laopopo.remoting.model.NettyRequestProcessor;
 import org.laopopo.remoting.model.RemotingTransporter;
+import org.laopopo.remoting.netty.decode.RemotingTransporterDecoder;
+import org.laopopo.remoting.netty.encode.RemotingTransporterEncoder;
 import org.laopopo.remoting.netty.idle.AcceptorIdleStateTrigger;
 import org.laopopo.remoting.netty.idle.IdleStateChecker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class NettyRemotingServer extends NettyRemotingBase implements RemotingService {
+/**
+ * 
+ * @author BazingaLyn
+ * @description netty的server端编写
+ * @time 2016年8月10日
+ * @modifytime
+ */
+public class NettyRemotingServer extends NettyRemotingBase implements RemotingServer {
 	
 	private static final Logger logger = LoggerFactory.getLogger(NettyRemotingServer.class);
 	
@@ -51,7 +62,6 @@ public class NettyRemotingServer extends NettyRemotingBase implements RemotingSe
     private int workerNum;
     private int writeBufferLowWaterMark;
     private int writeBufferHighWaterMark;
-    
     protected final HashedWheelTimer timer = new HashedWheelTimer(new NamedThreadFactory("netty.acceptor.timer"));
     
     
@@ -71,6 +81,8 @@ public class NettyRemotingServer extends NettyRemotingBase implements RemotingSe
     	this.nettyServerConfig = nettyServerConfig;
     	if(null != nettyServerConfig){
         	workerNum = nettyServerConfig.getServerWorkerThreads();
+        	writeBufferLowWaterMark = nettyServerConfig.getWriteBufferLowWaterMark();
+        	writeBufferHighWaterMark = nettyServerConfig.getWriteBufferHighWaterMark();
         }
     	init();
 	}
@@ -148,14 +160,22 @@ public class NettyRemotingServer extends NettyRemotingBase implements RemotingSe
             protected void initChannel(SocketChannel ch) throws Exception {
             	ch.pipeline().addLast(
             			defaultEventExecutorGroup,
-            			new IdleStateChecker(timer, READER_IDLE_TIME_SECONDS, 0, 0),
-            			idleStateTrigger
-//            			,new ProviderDecoder()
-//            			,encoder
-//            			,handler);
-            			);
+//            			new IdleStateChecker(timer, READER_IDLE_TIME_SECONDS, 0, 0),
+//            			idleStateTrigger,
+            			new RemotingTransporterDecoder()
+            			,new RemotingTransporterEncoder()
+            			,new NettyServerHandler());
             }
         });
+		
+		try {
+			logger.info("netty serverBootstrap start...");
+            this.serverBootstrap.bind().sync();
+        }
+        catch (InterruptedException e1) {
+        	logger.error("start serverBootstrap exception [{}]",e1.getMessage());
+            throw new RuntimeException("this.serverBootstrap.bind().sync() InterruptedException", e1);
+        }
 		
 		
 	}
@@ -173,11 +193,6 @@ public class NettyRemotingServer extends NettyRemotingBase implements RemotingSe
 	@Override
 	public void registerProecessor(int requestCode, NettyRequestProcessor processor, ExecutorService executor) {
 		
-	}
-
-	@Override
-	public int localListenPort() {
-		return 0;
 	}
 
 	@Override
@@ -199,6 +214,15 @@ public class NettyRemotingServer extends NettyRemotingBase implements RemotingSe
 	private boolean isNativeEt() {
 		return NativeSupport.isSupportNativeET();
 	}
+	
+	class NettyServerHandler extends SimpleChannelInboundHandler<RemotingTransporter> {
+
+        @Override
+        protected void channelRead0(ChannelHandlerContext ctx, RemotingTransporter msg) throws Exception {
+            processMessageReceived(ctx, msg);
+        }
+		
+    }
 
 	
 

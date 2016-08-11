@@ -1,8 +1,11 @@
 package org.laopopo.remoting;
 
+import static org.laopopo.common.protocal.LaopopoProtocol.REQUEST_REMOTING;
+import static org.laopopo.common.protocal.LaopopoProtocol.RESPONSE_REMOTING;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandlerContext;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -29,7 +32,7 @@ public class NettyRemotingBase {
 	private static final Logger logger = LoggerFactory.getLogger(NettyRemotingBase.class);
 	
 	/******key为请求的opaque value是远程返回的结果封装类******/
-	protected final ConcurrentHashMap<Integer, RemotingResponse> responseTable = new ConcurrentHashMap<Integer, RemotingResponse>(256);
+	protected final ConcurrentHashMap<Long, RemotingResponse> responseTable = new ConcurrentHashMap<Long, RemotingResponse>(256);
 	
 	protected Pair<NettyRequestProcessor, ExecutorService> defaultRequestProcessor;
 
@@ -78,6 +81,41 @@ public class NettyRemotingBase {
 			//最后不管怎么样，都需要将其从篮子中移除出来，否则篮子会撑爆的
 			this.responseTable.remove(request.getOpaque());
 		}
+	}
+	
+	protected void processMessageReceived(ChannelHandlerContext ctx, RemotingTransporter msg) {
+		final RemotingTransporter remotingTransporter = msg;
+        if (remotingTransporter != null) {
+            switch (remotingTransporter.getTransporterType()) {
+            case REQUEST_REMOTING:
+                processRemotingRequest(ctx, remotingTransporter);
+                break;
+            case RESPONSE_REMOTING:
+                processRemotingResponse(ctx, remotingTransporter);
+                break;
+            default:
+                break;
+            }
+        }
+	}
+	
+	protected void processRemotingRequest(ChannelHandlerContext ctx, RemotingTransporter remotingTransporter) {
+		System.out.println(remotingTransporter);
+		remotingTransporter.setTransporterType(RESPONSE_REMOTING);
+		ctx.channel().writeAndFlush(remotingTransporter);
+	}
+	
+	protected void processRemotingResponse(ChannelHandlerContext ctx, RemotingTransporter remotingTransporter) {
+		System.out.println(remotingTransporter);
+		final RemotingResponse remotingResponse = responseTable.get(remotingTransporter.getOpaque());
+		if(null != remotingResponse){
+			remotingResponse.setRemotingTransporter(remotingTransporter);
+			
+			responseTable.remove(remotingTransporter.getOpaque());
+		}else {
+            logger.warn("received response but matched Id is removed from responseTable maybe timeout");
+            logger.warn(remotingTransporter.toString());
+        }
 	}
 	
 }

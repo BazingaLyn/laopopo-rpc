@@ -23,7 +23,7 @@ public class RemotingResponse {
 	private volatile boolean sendRequestOK = true;
 
 	// 请求的opaque
-	private final int opaque;
+	private final long opaque;
 
 	// 默认的回调函数
 	private final InvokeCallback invokeCallback;
@@ -34,7 +34,7 @@ public class RemotingResponse {
 	private final long beginTimestamp = System.currentTimeMillis();
 	private final CountDownLatch countDownLatch = new CountDownLatch(1);
 
-	public RemotingResponse(int opaque, long timeoutMillis, InvokeCallback invokeCallback) {
+	public RemotingResponse(long opaque, long timeoutMillis, InvokeCallback invokeCallback) {
 		this.invokeCallback = invokeCallback;
 		this.opaque = opaque;
 		this.timeoutMillis = timeoutMillis;
@@ -54,7 +54,7 @@ public class RemotingResponse {
 		this.sendRequestOK = sendRequestOK;
 	}
 
-	public int getOpaque() {
+	public long getOpaque() {
 		return opaque;
 	}
 

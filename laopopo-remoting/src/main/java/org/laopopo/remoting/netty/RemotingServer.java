@@ -19,12 +19,10 @@ import org.laopopo.remoting.model.RemotingTransporter;
  * @time 2016年8月10日14:48:00
  * @modifytime
  */
-public interface RemotingService extends BaseRemotingService {
+public interface RemotingServer extends BaseRemotingService {
 
 	void registerProecessor(final int requestCode, final NettyRequestProcessor processor,final ExecutorService executor);
 	
-	int localListenPort();
-
     Pair<NettyRequestProcessor, ExecutorService> getProcessorPair(final int requestCode);
 
     RemotingTransporter invokeSync(final Channel channel, final RemotingTransporter request, final long timeoutMillis) throws InterruptedException, RemotingSendRequestException,
