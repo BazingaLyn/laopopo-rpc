@@ -7,9 +7,11 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 
+import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
+import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.utils.Pair;
 import org.laopopo.remoting.exception.RemotingSendRequestException;
 import org.laopopo.remoting.exception.RemotingTimeoutException;
@@ -27,7 +29,7 @@ import org.slf4j.LoggerFactory;
  * @time 2016年8月10日10:57:27
  * @modifytime
  */
-public class NettyRemotingBase {
+public abstract class NettyRemotingBase {
 	
 	private static final Logger logger = LoggerFactory.getLogger(NettyRemotingBase.class);
 	
@@ -35,6 +37,9 @@ public class NettyRemotingBase {
 	protected final ConcurrentHashMap<Long, RemotingResponse> responseTable = new ConcurrentHashMap<Long, RemotingResponse>(256);
 	
 	protected Pair<NettyRequestProcessor, ExecutorService> defaultRequestProcessor;
+	
+	protected final HashMap<Byte/* request code */, Pair<NettyRequestProcessor, ExecutorService>> processorTable =
+            new HashMap<Byte, Pair<NettyRequestProcessor, ExecutorService>>(64);
 
 	public RemotingTransporter invokeSyncImpl(final Channel channel,final RemotingTransporter request,final long timeoutMillis) throws RemotingTimeoutException, RemotingSendRequestException, InterruptedException{
 		
@@ -99,14 +104,56 @@ public class NettyRemotingBase {
         }
 	}
 	
-	protected void processRemotingRequest(ChannelHandlerContext ctx, RemotingTransporter remotingTransporter) {
-		System.out.println(remotingTransporter);
-		remotingTransporter.setTransporterType(RESPONSE_REMOTING);
-		ctx.channel().writeAndFlush(remotingTransporter);
+	protected void processRemotingRequest(final ChannelHandlerContext ctx, final RemotingTransporter remotingTransporter) {
+		
+		final Pair<NettyRequestProcessor, ExecutorService> matchedPair = this.processorTable.get(remotingTransporter.getCode());
+		final Pair<NettyRequestProcessor, ExecutorService> pair =
+                null == matchedPair ? this.defaultRequestProcessor : matchedPair;
+		 if (pair != null) {
+			 
+			 Runnable run = new Runnable() {
+
+				@Override
+				public void run() {
+					try {
+						RPCHook rpcHook = NettyRemotingBase.this.getRPCHook();
+                        if (rpcHook != null) {
+                            rpcHook.doBeforeRequest(ConnectionUtils.parseChannelRemoteAddr(ctx.channel()), remotingTransporter);
+                        }
+                        final RemotingTransporter response = pair.getKey().processRequest(ctx, remotingTransporter);
+                        if (rpcHook != null) {
+                            rpcHook.doAfterResponse(ConnectionUtils.parseChannelRemoteAddr(ctx.channel()),
+                            		remotingTransporter, response);
+                        }
+                         ctx.writeAndFlush(response).addListener(new ChannelFutureListener() {
+
+							@Override
+							public void operationComplete(ChannelFuture future) throws Exception {
+								if(!future.isSuccess()){
+									logger.error("fail send response ,exception is [{}]",future.cause().getMessage());
+								}
+							}
+                         });
+					} catch (Exception e) {
+						logger.error("processor occur exception [{}]",e.getMessage());
+						final RemotingTransporter response = RemotingTransporter.newInstance(remotingTransporter.getOpaque(), LaopopoProtocol.RESPONSE_REMOTING, LaopopoProtocol.HANDLER_ERROR, null);
+                        ctx.writeAndFlush(response);
+					}
+				}
+			 };
+			 try {
+				 pair.getValue().submit(run);
+			} catch (Exception e) {
+				logger.error("server is busy,[{}]",e.getMessage());
+				final RemotingTransporter response = RemotingTransporter.newInstance(remotingTransporter.getOpaque(), LaopopoProtocol.RESPONSE_REMOTING, LaopopoProtocol.HANDLER_BUSY, null);
+                ctx.writeAndFlush(response);
+			}
+		 }
 	}
 	
+	protected abstract RPCHook getRPCHook();
+
 	protected void processRemotingResponse(ChannelHandlerContext ctx, RemotingTransporter remotingTransporter) {
-		System.out.println(remotingTransporter);
 		final RemotingResponse remotingResponse = responseTable.get(remotingTransporter.getOpaque());
 		if(null != remotingResponse){
 			remotingResponse.setRemotingTransporter(remotingTransporter);

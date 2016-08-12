@@ -21,7 +21,9 @@ import org.laopopo.remoting.model.RemotingTransporter;
  */
 public interface RemotingServer extends BaseRemotingService {
 
-	void registerProecessor(final int requestCode, final NettyRequestProcessor processor,final ExecutorService executor);
+	void registerProecessor(final byte requestCode, final NettyRequestProcessor processor,final ExecutorService executor);
+	
+	void registerDefaultProcessor(final NettyRequestProcessor processor, final ExecutorService executor);
 	
     Pair<NettyRequestProcessor, ExecutorService> getProcessorPair(final int requestCode);
 

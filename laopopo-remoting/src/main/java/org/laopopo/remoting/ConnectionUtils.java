@@ -50,4 +50,20 @@ public class ConnectionUtils {
 	        });
 		
 	}
+
+		public static String exceptionSimpleDesc(Exception e) {
+			StringBuffer sb = new StringBuffer();
+	        if (e != null) {
+	            sb.append(e.toString());
+
+	            StackTraceElement[] stackTrace = e.getStackTrace();
+	            if (stackTrace != null && stackTrace.length > 0) {
+	                StackTraceElement elment = stackTrace[0];
+	                sb.append(", ");
+	                sb.append(elment.toString());
+	            }
+	        }
+
+	        return sb.toString();
+		}
 }

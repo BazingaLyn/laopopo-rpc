@@ -1,7 +1,6 @@
 package org.laopopo.remoting.netty;
 
 import static org.laopopo.common.utils.Constants.AVAILABLE_PROCESSORS;
-import static org.laopopo.common.utils.Constants.READER_IDLE_TIME_SECONDS;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -25,6 +24,7 @@ import io.netty.util.internal.PlatformDependent;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -40,7 +40,6 @@ import org.laopopo.remoting.model.RemotingTransporter;
 import org.laopopo.remoting.netty.decode.RemotingTransporterDecoder;
 import org.laopopo.remoting.netty.encode.RemotingTransporterEncoder;
 import org.laopopo.remoting.netty.idle.AcceptorIdleStateTrigger;
-import org.laopopo.remoting.netty.idle.IdleStateChecker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,7 +70,11 @@ public class NettyRemotingServer extends NettyRemotingBase implements RemotingSe
     
     private DefaultEventExecutorGroup defaultEventExecutorGroup;
     
+    private final ExecutorService publicExecutor;
+    
     private final AcceptorIdleStateTrigger idleStateTrigger = new AcceptorIdleStateTrigger();
+    
+    private RPCHook rpcHook;
     
     public NettyRemotingServer(){
     	this(new NettyServerConfig());
@@ -84,6 +87,15 @@ public class NettyRemotingServer extends NettyRemotingBase implements RemotingSe
         	writeBufferLowWaterMark = nettyServerConfig.getWriteBufferLowWaterMark();
         	writeBufferHighWaterMark = nettyServerConfig.getWriteBufferHighWaterMark();
         }
+    	this.publicExecutor = Executors.newFixedThreadPool(4, new ThreadFactory() {
+            private AtomicInteger threadIndex = new AtomicInteger(0);
+
+
+            @Override
+            public Thread newThread(Runnable r) {
+                return new Thread(r, "NettyServerPublicExecutor_" + this.threadIndex.incrementAndGet());
+            }
+        });
     	init();
 	}
     
@@ -191,19 +203,34 @@ public class NettyRemotingServer extends NettyRemotingBase implements RemotingSe
 	}
 
 	@Override
-	public void registerProecessor(int requestCode, NettyRequestProcessor processor, ExecutorService executor) {
-		
+	public void registerProecessor(byte requestCode, NettyRequestProcessor processor, ExecutorService executor) {
+		ExecutorService _executor = executor;
+		if (null == executor) {
+			_executor = this.publicExecutor;
+        }
+		Pair<NettyRequestProcessor, ExecutorService> pair = new Pair<NettyRequestProcessor, ExecutorService>(processor, _executor);
+        this.processorTable.put(requestCode, pair);
+	}
+	
+	@Override
+	public void registerDefaultProcessor(NettyRequestProcessor processor, ExecutorService executor) {
+		this.defaultRequestProcessor = new Pair<NettyRequestProcessor, ExecutorService>(processor, executor);
 	}
 
 	@Override
 	public Pair<NettyRequestProcessor, ExecutorService> getProcessorPair(int requestCode) {
-		return null;
+		return processorTable.get(requestCode);
 	}
 
 	@Override
 	public RemotingTransporter invokeSync(Channel channel, RemotingTransporter request, long timeoutMillis) throws InterruptedException,
 			RemotingSendRequestException, RemotingTimeoutException {
 		return super.invokeSyncImpl(channel, request, timeoutMillis);
+	}
+	
+	@Override
+	protected RPCHook getRPCHook() {
+		return rpcHook;
 	}
 	
 	
@@ -223,7 +250,5 @@ public class NettyRemotingServer extends NettyRemotingBase implements RemotingSe
         }
 		
     }
-
-	
 
 }

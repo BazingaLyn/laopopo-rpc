@@ -9,6 +9,10 @@ public class LaopopoProtocol {
     
     public static final byte RESPONSE_REMOTING = 2;
     
+    public static final byte HANDLER_ERROR = -1;
+    
+    public static final byte HANDLER_BUSY = -2;
+    
     private byte type;
     private byte sign;
     private long id;

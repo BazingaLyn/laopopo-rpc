@@ -238,7 +238,12 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 
 	@Override
 	public void registerRPCHook(RPCHook rpcHook) {
-
+         this.rpcHook = rpcHook;
+	}
+	
+	@Override
+	protected RPCHook getRPCHook() {
+		return rpcHook;
 	}
 
 	private EventLoopGroup initEventLoopGroup(int nWorkers, ThreadFactory workerFactory) {

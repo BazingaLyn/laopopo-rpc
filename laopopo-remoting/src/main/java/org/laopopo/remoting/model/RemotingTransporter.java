@@ -1,12 +1,8 @@
 package org.laopopo.remoting.model;
 
-import static org.laopopo.common.serialization.SerializerHolder.serializerImpl;
-
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.laopopo.remoting.exception.RemotingCommmonCustomException;
-
-public class RemotingTransporter {
+public class RemotingTransporter extends ByteHolder {
 
 	private static final AtomicLong requestId = new AtomicLong(0l);
 
@@ -78,52 +74,15 @@ public class RemotingTransporter {
 		remotingTransporter.setCode(sign);
 		remotingTransporter.setTransporterType(type);
 		remotingTransporter.setOpaque(id);
-		remotingTransporter.setCustomHeader(serializerImpl().readObject(bytes, TestCommonCustomHeader.class));
+		remotingTransporter.bytes(bytes);
 		return remotingTransporter;
 	}
-	
 
 	@Override
 	public String toString() {
-		return "RemotingTransporter [code=" + code + ", customHeader=" + customHeader + ", timestamp=" + timestamp + ", opaque=" + opaque + "]";
+		return "RemotingTransporter [code=" + code + ", customHeader=" + customHeader + ", timestamp=" + timestamp + ", opaque=" + opaque
+				+ ", transporterType=" + transporterType + "]";
 	}
-	
-public static class TestCommonCustomHeader implements CommonCustomHeader {
-		
-		private int id;
-		
-		private String name;
-
-		public TestCommonCustomHeader(int id, String name) {
-			this.id = id;
-			this.name = name;
-		}
-
-		public int getId() {
-			return id;
-		}
-
-		public void setId(int id) {
-			this.id = id;
-		}
-
-		public String getName() {
-			return name;
-		}
-
-		public void setName(String name) {
-			this.name = name;
-		}
-		
-		@Override
-		public void checkFields() throws RemotingCommmonCustomException {
-			
-		}
-		
-	}
-
-	
-	
 	
 
 }

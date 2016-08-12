@@ -20,7 +20,12 @@ public class RemotingTransporterEncoder extends MessageToByteEncoder<RemotingTra
 	private void doEncodeRemotingTransporter(RemotingTransporter msg, ByteBuf out) {
 		byte[] body = serializerImpl().writeObject(msg.getCustomHeader());
 		
-		out.writeShort(MAGIC).writeByte(msg.getTransporterType()).writeByte(msg.getCode()).writeLong(msg.getOpaque()).writeInt(body.length).writeBytes(body);
+		out.writeShort(MAGIC).
+		writeByte(msg.getTransporterType())// 传输类型 sign
+		.writeByte(msg.getCode()) // 请求类型requestcode
+		.writeLong(msg.getOpaque()) //requestId
+		.writeInt(body.length) //length
+		.writeBytes(body);
 	}
 
 }
