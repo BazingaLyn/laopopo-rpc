@@ -1,6 +1,7 @@
 package org.laopopo.remoting.netty;
 
 import static org.laopopo.common.utils.Constants.AVAILABLE_PROCESSORS;
+import static org.laopopo.common.utils.Constants.READER_IDLE_TIME_SECONDS;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -40,6 +41,7 @@ import org.laopopo.remoting.model.RemotingTransporter;
 import org.laopopo.remoting.netty.decode.RemotingTransporterDecoder;
 import org.laopopo.remoting.netty.encode.RemotingTransporterEncoder;
 import org.laopopo.remoting.netty.idle.AcceptorIdleStateTrigger;
+import org.laopopo.remoting.netty.idle.IdleStateChecker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -172,8 +174,8 @@ public class NettyRemotingServer extends NettyRemotingBase implements RemotingSe
             protected void initChannel(SocketChannel ch) throws Exception {
             	ch.pipeline().addLast(
             			defaultEventExecutorGroup,
-//            			new IdleStateChecker(timer, READER_IDLE_TIME_SECONDS, 0, 0),
-//            			idleStateTrigger,
+            			new IdleStateChecker(timer, READER_IDLE_TIME_SECONDS, 0, 0),
+            			idleStateTrigger,
             			new RemotingTransporterDecoder()
             			,new RemotingTransporterEncoder()
             			,new NettyServerHandler());

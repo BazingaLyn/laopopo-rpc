@@ -1,10 +1,12 @@
 package org.laopopo.remoting.netty;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.laopopo.common.utils.Constants.WRITER_IDLE_TIME_SECONDS;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -17,7 +19,7 @@ import io.netty.channel.epoll.EpollSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.timeout.IdleStateHandler;
+import io.netty.util.HashedWheelTimer;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 
@@ -29,6 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.laopopo.common.utils.NamedThreadFactory;
 import org.laopopo.common.utils.NativeSupport;
 import org.laopopo.remoting.ConnectionUtils;
 import org.laopopo.remoting.NettyRemotingBase;
@@ -40,6 +43,9 @@ import org.laopopo.remoting.model.NettyRequestProcessor;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.laopopo.remoting.netty.decode.RemotingTransporterDecoder;
 import org.laopopo.remoting.netty.encode.RemotingTransporterEncoder;
+import org.laopopo.remoting.netty.idle.ConnectorIdleStateTrigger;
+import org.laopopo.remoting.netty.idle.IdleStateChecker;
+import org.laopopo.remoting.watcher.ConnectionWatchdog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,6 +68,10 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 	private volatile int writeBufferHighWaterMark = -1;
 	private volatile int writeBufferLowWaterMark = -1;
 	
+	private final ConnectorIdleStateTrigger idleStateTrigger = new ConnectorIdleStateTrigger();
+	
+	protected final HashedWheelTimer timer = new HashedWheelTimer(new NamedThreadFactory("netty.timer"));
+	
 	private RPCHook rpcHook;
 
 	private final ConcurrentHashMap<String /* addr */, ChannelWrapper> channelTables = new ConcurrentHashMap<String, ChannelWrapper>();
@@ -74,6 +84,53 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 			writeBufferHighWaterMark = nettyClientConfig.getWriteBufferHighWaterMark();
 		}
 		init();
+	}
+	
+	@Override
+	public void start() {
+		this.defaultEventExecutorGroup = new DefaultEventExecutorGroup(//
+				nettyClientConfig.getClientWorkerThreads(), //
+				new ThreadFactory() {
+
+					private AtomicInteger threadIndex = new AtomicInteger(0);
+
+					@Override
+					public Thread newThread(Runnable r) {
+						return new Thread(r, "NettyClientWorkerThread_" + this.threadIndex.incrementAndGet());
+					}
+				});
+		if (isNativeEt()) {
+			bootstrap.channel(EpollSocketChannel.class);
+		} else {
+			bootstrap.channel(NioSocketChannel.class);
+		}
+		
+		final ConnectionWatchdog watchdog = new ConnectionWatchdog(bootstrap,timer) {
+			
+			@Override
+			public ChannelHandler[] handlers() {
+				return new ChannelHandler[] {
+                        this,
+                        new RemotingTransporterDecoder(), //
+						new RemotingTransporterEncoder(), //
+						
+						new IdleStateChecker(timer, 0, WRITER_IDLE_TIME_SECONDS, 0),//
+						idleStateTrigger,
+						new NettyClientHandler()
+                };
+			}
+		};
+		watchdog.setReconnect(true);
+		
+		bootstrap.handler(new ChannelInitializer<SocketChannel>() {
+			@Override
+			public void initChannel(SocketChannel ch) throws Exception {
+				ch.pipeline().addLast(//
+						defaultEventExecutorGroup, //
+						watchdog.handlers());
+			}
+		});
+		logger.info("init client netty over");
 	}
 
 	@Override
@@ -188,39 +245,6 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 	@Override
 	public boolean isChannelWriteable(String addr) {
 		return false;
-	}
-
-	@Override
-	public void start() {
-		this.defaultEventExecutorGroup = new DefaultEventExecutorGroup(//
-				nettyClientConfig.getClientWorkerThreads(), //
-				new ThreadFactory() {
-
-					private AtomicInteger threadIndex = new AtomicInteger(0);
-
-					@Override
-					public Thread newThread(Runnable r) {
-						return new Thread(r, "NettyClientWorkerThread_" + this.threadIndex.incrementAndGet());
-					}
-				});
-		if (isNativeEt()) {
-			bootstrap.channel(EpollSocketChannel.class);
-		} else {
-			bootstrap.channel(NioSocketChannel.class);
-		}
-		bootstrap.handler(new ChannelInitializer<SocketChannel>() {
-			@Override
-			public void initChannel(SocketChannel ch) throws Exception {
-				ch.pipeline().addLast(//
-						defaultEventExecutorGroup, //
-						new RemotingTransporterDecoder(), //
-						new RemotingTransporterEncoder(), //
-//						new IdleStateHandler(0, 0, nettyClientConfig.getClientChannelMaxIdleTimeSeconds()),//
-						new NettyClientHandler());
-			}
-		});
-		logger.info("init client netty over");
-
 	}
 
 	class NettyClientHandler extends SimpleChannelInboundHandler<RemotingTransporter> {

@@ -1,6 +1,10 @@
 package org.laopopo.common.protocal;
 
+
 public class LaopopoProtocol {
+	
+	/** 协议头长度 */
+    public static final int HEAD_LENGTH = 16;
 	
 	/** Magic */
     public static final short MAGIC = (short) 0xbabe;
@@ -12,6 +16,9 @@ public class LaopopoProtocol {
     public static final byte HANDLER_ERROR = -1;
     
     public static final byte HANDLER_BUSY = -2;
+    
+    public static final byte HEARTBEAT = 127;
+    
     
     private byte type;
     private byte sign;
