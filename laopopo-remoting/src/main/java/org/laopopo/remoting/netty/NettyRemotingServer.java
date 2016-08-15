@@ -197,12 +197,36 @@ public class NettyRemotingServer extends NettyRemotingBase implements RemotingSe
 
 	@Override
 	public void shutdown() {
-		
+		try {
+            if (this.timer != null) {
+                this.timer.stop();
+            }
+
+            this.boss.shutdownGracefully();
+
+            this.worker.shutdownGracefully();
+
+            if (this.defaultEventExecutorGroup != null) {
+                this.defaultEventExecutorGroup.shutdownGracefully();
+            }
+        }
+        catch (Exception e) {
+            logger.error("NettyRemotingServer shutdown exception, ", e);
+        }
+
+        if (this.publicExecutor != null) {
+            try {
+                this.publicExecutor.shutdown();
+            }
+            catch (Exception e) {
+                logger.error("NettyRemotingServer shutdown exception, ", e);
+            }
+        }
 	}
 
 	@Override
 	public void registerRPCHook(RPCHook rpcHook) {
-		
+		this.rpcHook = rpcHook;
 	}
 
 	@Override

@@ -25,6 +25,7 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -36,6 +37,7 @@ import org.laopopo.common.exception.remoting.RemotingSendRequestException;
 import org.laopopo.common.exception.remoting.RemotingTimeoutException;
 import org.laopopo.common.utils.NamedThreadFactory;
 import org.laopopo.common.utils.NativeSupport;
+import org.laopopo.common.utils.Pair;
 import org.laopopo.remoting.ConnectionUtils;
 import org.laopopo.remoting.NettyRemotingBase;
 import org.laopopo.remoting.RPCHook;
@@ -49,6 +51,13 @@ import org.laopopo.remoting.watcher.ConnectionWatchdog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description Netty的Client端代码
+ * @time 2016年8月15日
+ * @modifytime
+ */
 public class NettyRemotingClient extends NettyRemotingBase implements RemotingClient {
 
 	private static final Logger logger = LoggerFactory.getLogger(NettyRemotingClient.class);
@@ -68,10 +77,12 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 	private volatile int writeBufferHighWaterMark = -1;
 	private volatile int writeBufferLowWaterMark = -1;
 	
+	private final ExecutorService publicExecutor;
+
 	private final ConnectorIdleStateTrigger idleStateTrigger = new ConnectorIdleStateTrigger();
-	
-	protected final HashedWheelTimer timer = new HashedWheelTimer(new NamedThreadFactory("netty.timer"));
-	
+
+	protected HashedWheelTimer timer = new HashedWheelTimer(new NamedThreadFactory("netty.timer"));
+
 	private RPCHook rpcHook;
 
 	private final ConcurrentHashMap<String /* addr */, ChannelWrapper> channelTables = new ConcurrentHashMap<String, ChannelWrapper>();
@@ -83,11 +94,21 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 			writeBufferLowWaterMark = nettyClientConfig.getWriteBufferLowWaterMark();
 			writeBufferHighWaterMark = nettyClientConfig.getWriteBufferHighWaterMark();
 		}
+		this.publicExecutor = Executors.newFixedThreadPool(4, new ThreadFactory() {
+            private AtomicInteger threadIndex = new AtomicInteger(0);
+
+
+            @Override
+            public Thread newThread(Runnable r) {
+                return new Thread(r, "NettyClientPublicExecutor_" + this.threadIndex.incrementAndGet());
+            }
+        });
 		init();
 	}
-	
+
 	@Override
 	public void start() {
+		
 		this.defaultEventExecutorGroup = new DefaultEventExecutorGroup(//
 				nettyClientConfig.getClientWorkerThreads(), //
 				new ThreadFactory() {
@@ -104,24 +125,21 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 		} else {
 			bootstrap.channel(NioSocketChannel.class);
 		}
-		
-		final ConnectionWatchdog watchdog = new ConnectionWatchdog(bootstrap,timer) {
-			
+
+		// 重连狗
+		final ConnectionWatchdog watchdog = new ConnectionWatchdog(bootstrap, timer) {
+
 			@Override
 			public ChannelHandler[] handlers() {
-				return new ChannelHandler[] {
-                        this,
-                        new RemotingTransporterDecoder(), //
+				return new ChannelHandler[] { this, new RemotingTransporterDecoder(), //
 						new RemotingTransporterEncoder(), //
-						
+
 						new IdleStateChecker(timer, 0, WRITER_IDLE_TIME_SECONDS, 0),//
-						idleStateTrigger,
-						new NettyClientHandler()
-                };
+						idleStateTrigger, new NettyClientHandler() };
 			}
 		};
 		watchdog.setReconnect(true);
-		
+
 		bootstrap.handler(new ChannelInitializer<SocketChannel>() {
 			@Override
 			public void initChannel(SocketChannel ch) throws Exception {
@@ -137,7 +155,7 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 	public void init() {
 		ThreadFactory workerFactory = new DefaultThreadFactory("netty.client");
 		worker = initEventLoopGroup(nWorkers, workerFactory);
-
+		
 		bootstrap = new Bootstrap().group(worker);
 
 		if (worker instanceof EpollEventLoopGroup) {
@@ -159,7 +177,7 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 
 	private Channel getAndCreateChannel(final String addr) throws InterruptedException {
 
-		if (null == addr){
+		if (null == addr) {
 			logger.warn("address is null");
 			return null;
 		}
@@ -238,13 +256,24 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 	}
 
 	@Override
-	public void registerProcessor(int requestCode, NettyRequestProcessor processor, ExecutorService executor) {
+	public void registerProcessor(byte requestCode, NettyRequestProcessor processor, ExecutorService executor) {
+		ExecutorService executorThis = executor;
+        if (null == executor) {
+            executorThis = this.publicExecutor;
+        }
 
+        Pair<NettyRequestProcessor, ExecutorService> pair =
+                new Pair<NettyRequestProcessor, ExecutorService>(processor, executorThis);
+        this.processorTable.put(requestCode, pair);
 	}
 
 	@Override
 	public boolean isChannelWriteable(String addr) {
-		return false;
+		ChannelWrapper cw = this.channelTables.get(addr);
+        if (cw != null && cw.isOK()) {
+            return cw.isWriteable();
+        }
+        return true;
 	}
 
 	class NettyClientHandler extends SimpleChannelInboundHandler<RemotingTransporter> {
@@ -257,14 +286,38 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 
 	@Override
 	public void shutdown() {
+		try {
+			this.timer.stop();
+			this.timer = null;
+			for (ChannelWrapper cw : this.channelTables.values()) {
+				this.closeChannel(null, cw.getChannel());
+			}
 
+			this.channelTables.clear();
+
+			this.worker.shutdownGracefully();
+
+			if (this.defaultEventExecutorGroup != null) {
+				this.defaultEventExecutorGroup.shutdownGracefully();
+			}
+		} catch (Exception e) {
+			logger.error("NettyRemotingClient shutdown exception, ", e);
+		}
+
+		if (this.publicExecutor != null) {
+			try {
+				this.publicExecutor.shutdown();
+			} catch (Exception e) {
+				logger.error("NettyRemotingClient shutdown exception, ", e);
+			}
+		}
 	}
 
 	@Override
 	public void registerRPCHook(RPCHook rpcHook) {
-         this.rpcHook = rpcHook;
+		this.rpcHook = rpcHook;
 	}
-	
+
 	@Override
 	protected RPCHook getRPCHook() {
 		return rpcHook;
@@ -280,91 +333,78 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 
 	@Override
 	public RemotingTransporter invokeSync(String addr, RemotingTransporter request, long timeoutMillis) throws InterruptedException, RemotingException {
-		
+
 		final Channel channel = this.getAndCreateChannel(addr);
 		if (channel != null && channel.isActive()) {
 			try {
-            	//回调前置钩子
-                if (this.rpcHook != null) {
-                    this.rpcHook.doBeforeRequest(addr, request);
-                }
-                //有了channel，有了request，request中也有了请求的Request.Code和Topic值，那么就是万事具备了，channel.writeAndFlush(request)就OK了
-                RemotingTransporter response = this.invokeSyncImpl(channel, request, timeoutMillis);
-                //后置回调钩子
-                if (this.rpcHook != null) {
-                    this.rpcHook.doAfterResponse(ConnectionUtils.parseChannelRemoteAddr(channel), request,
-                        response);
-                }
-                return response;
-            }
-            catch (RemotingSendRequestException e) {
-                logger.warn("invokeSync: send request exception, so close the channel[{}]", addr);
-                this.closeChannel(addr, channel);
-                throw e;
-            }
-            catch (RemotingTimeoutException e) {
-            	logger.warn("invokeSync: wait response timeout exception, the channel[{}]", addr);
-                throw e;
-            }
-		}else{
-			//如果该channel是不健康的(创建的时候也许是好的，放入到缓存table的时候也是好的，就是在用的时候，它不行了，尼玛，不好意思，就需要将你从table中移除掉)
-            this.closeChannel(addr, channel);
-            throw new RemotingException(addr + " connection exception");
+				// 回调前置钩子
+				if (this.rpcHook != null) {
+					this.rpcHook.doBeforeRequest(addr, request);
+				}
+				// 有了channel，有了request，request中也有了请求的Request.Code和Topic值，那么就是万事具备了，channel.writeAndFlush(request)就OK了
+				RemotingTransporter response = this.invokeSyncImpl(channel, request, timeoutMillis);
+				// 后置回调钩子
+				if (this.rpcHook != null) {
+					this.rpcHook.doAfterResponse(ConnectionUtils.parseChannelRemoteAddr(channel), request, response);
+				}
+				return response;
+			} catch (RemotingSendRequestException e) {
+				logger.warn("invokeSync: send request exception, so close the channel[{}]", addr);
+				this.closeChannel(addr, channel);
+				throw e;
+			} catch (RemotingTimeoutException e) {
+				logger.warn("invokeSync: wait response timeout exception, the channel[{}]", addr);
+				throw e;
+			}
+		} else {
+			// 如果该channel是不健康的(创建的时候也许是好的，放入到缓存table的时候也是好的，就是在用的时候，它不行了，尼玛，不好意思，就需要将你从table中移除掉)
+			this.closeChannel(addr, channel);
+			throw new RemotingException(addr + " connection exception");
 		}
 	}
 
 	private void closeChannel(String addr, Channel channel) {
 		if (null == channel)
-            return;
+			return;
 
-        final String addrRemote = null == addr ? ConnectionUtils.parseChannelRemoteAddr(channel) : addr;
+		final String addrRemote = null == addr ? ConnectionUtils.parseChannelRemoteAddr(channel) : addr;
 
-        try {
-            if (this.lockChannelTables.tryLock(LockTimeoutMillis, TimeUnit.MILLISECONDS)) {
-                try {
-                    boolean removeItemFromTable = true;
-                    final ChannelWrapper prevCW = this.channelTables.get(addrRemote);
+		try {
+			if (this.lockChannelTables.tryLock(LockTimeoutMillis, TimeUnit.MILLISECONDS)) {
+				try {
+					boolean removeItemFromTable = true;
+					final ChannelWrapper prevCW = this.channelTables.get(addrRemote);
 
-                    logger.info("closeChannel: begin close the channel[{}] Found: {}", addrRemote,
-                        (prevCW != null));
+					logger.info("closeChannel: begin close the channel[{}] Found: {}", addrRemote, (prevCW != null));
 
-                    if (null == prevCW) {
-                    	logger.info(
-                            "closeChannel: the channel[{}] has been removed from the channel table before",
-                            addrRemote);
-                        removeItemFromTable = false;
-                    }
-                    else if (prevCW.getChannel() != channel) {
-                    	logger.info(
-                            "closeChannel: the channel[{}] has been closed before, and has been created again, nothing to do.",
-                            addrRemote);
-                        removeItemFromTable = false;
-                    }
+					if (null == prevCW) {
+						logger.info("closeChannel: the channel[{}] has been removed from the channel table before", addrRemote);
+						removeItemFromTable = false;
+					} else if (prevCW.getChannel() != channel) {
+						logger.info("closeChannel: the channel[{}] has been closed before, and has been created again, nothing to do.", addrRemote);
+						removeItemFromTable = false;
+					}
 
-                    if (removeItemFromTable) {
-                        this.channelTables.remove(addrRemote);
-                        logger.info("closeChannel: the channel[{}] was removed from channel table", addrRemote);
-                    }
+					if (removeItemFromTable) {
+						this.channelTables.remove(addrRemote);
+						logger.info("closeChannel: the channel[{}] was removed from channel table", addrRemote);
+					}
 
-                    ConnectionUtils.closeChannel(channel);
-                }
-                catch (Exception e) {
-                	logger.error("closeChannel: close the channel exception", e);
-                }
-                finally {
-                    this.lockChannelTables.unlock();
-                }
-            }
-            else {
-            	logger.warn("closeChannel: try to lock channel table, but timeout, {}ms", LockTimeoutMillis);
-            }
-        }
-        catch (InterruptedException e) {
-        	logger.error("closeChannel exception", e);
-        }
+					ConnectionUtils.closeChannel(channel);
+				} catch (Exception e) {
+					logger.error("closeChannel: close the channel exception", e);
+				} finally {
+					this.lockChannelTables.unlock();
+				}
+			} else {
+				logger.warn("closeChannel: try to lock channel table, but timeout, {}ms", LockTimeoutMillis);
+			}
+		} catch (InterruptedException e) {
+			logger.error("closeChannel exception", e);
+		}
 	}
 
-	//channel的编织包装类
+	// channel的编织包装类
 	class ChannelWrapper {
 
 		private final ChannelFuture channelFuture;
