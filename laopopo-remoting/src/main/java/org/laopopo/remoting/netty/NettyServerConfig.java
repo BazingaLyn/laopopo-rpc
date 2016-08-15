@@ -8,6 +8,8 @@ public class NettyServerConfig implements Cloneable{
     private int listenPort = 8888;
     
     private int serverWorkerThreads = AVAILABLE_PROCESSORS << 1;
+    
+    private int channelInactiveHandlerThreads = 1;
 
     private int serverSocketSndBufSize = -1;
     
@@ -30,6 +32,15 @@ public class NettyServerConfig implements Cloneable{
 
 	public void setServerWorkerThreads(int serverWorkerThreads) {
 		this.serverWorkerThreads = serverWorkerThreads;
+	}
+	
+
+	public int getChannelInactiveHandlerThreads() {
+		return channelInactiveHandlerThreads;
+	}
+
+	public void setChannelInactiveHandlerThreads(int channelInactiveHandlerThreads) {
+		this.channelInactiveHandlerThreads = channelInactiveHandlerThreads;
 	}
 
 	public int getServerSocketSndBufSize() {

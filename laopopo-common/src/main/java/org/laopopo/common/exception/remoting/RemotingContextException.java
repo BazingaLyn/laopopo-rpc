@@ -1,4 +1,4 @@
-package org.laopopo.remoting.exception;
+package org.laopopo.common.exception.remoting;
 
 public class RemotingContextException extends RemotingException {
 

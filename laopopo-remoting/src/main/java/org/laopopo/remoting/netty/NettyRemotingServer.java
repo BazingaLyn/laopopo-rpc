@@ -29,13 +29,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.laopopo.common.exception.remoting.RemotingSendRequestException;
+import org.laopopo.common.exception.remoting.RemotingTimeoutException;
 import org.laopopo.common.utils.NamedThreadFactory;
 import org.laopopo.common.utils.NativeSupport;
 import org.laopopo.common.utils.Pair;
 import org.laopopo.remoting.NettyRemotingBase;
 import org.laopopo.remoting.RPCHook;
-import org.laopopo.remoting.exception.RemotingSendRequestException;
-import org.laopopo.remoting.exception.RemotingTimeoutException;
+import org.laopopo.remoting.model.NettyChannelInactiveProcessor;
 import org.laopopo.remoting.model.NettyRequestProcessor;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.laopopo.remoting.netty.decode.RemotingTransporterDecoder;
@@ -218,6 +219,11 @@ public class NettyRemotingServer extends NettyRemotingBase implements RemotingSe
 	public void registerDefaultProcessor(NettyRequestProcessor processor, ExecutorService executor) {
 		this.defaultRequestProcessor = new Pair<NettyRequestProcessor, ExecutorService>(processor, executor);
 	}
+	
+	@Override
+	public void registerChannelInactiveProcessor(NettyChannelInactiveProcessor processor, ExecutorService executor) {
+		this.defaultChannelInactiveProcessor = new Pair<NettyChannelInactiveProcessor, ExecutorService>(processor, executor);
+	}
 
 	@Override
 	public Pair<NettyRequestProcessor, ExecutorService> getProcessorPair(int requestCode) {
@@ -250,6 +256,12 @@ public class NettyRemotingServer extends NettyRemotingBase implements RemotingSe
         protected void channelRead0(ChannelHandlerContext ctx, RemotingTransporter msg) throws Exception {
             processMessageReceived(ctx, msg);
         }
+        
+        @Override
+        public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        	processChannelInactive(ctx);
+        }
+
 		
     }
 

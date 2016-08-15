@@ -1,15 +1,15 @@
 package org.laopopo.example.netty;
 
-import org.laopopo.remoting.exception.RemotingCommmonCustomException;
-import org.laopopo.remoting.model.CommonCustomHeader;
+import org.laopopo.common.exception.remoting.RemotingCommmonCustomException;
+import org.laopopo.common.transport.body.CommonCustomBody;
 
-public class TestCommonCustomHeader implements CommonCustomHeader {
+public class TestCommonCustomBody implements CommonCustomBody {
 	
 	private int id;
 	
 	private String name;
 
-	public TestCommonCustomHeader(int id, String name) {
+	public TestCommonCustomBody(int id, String name) {
 		this.id = id;
 		this.name = name;
 	}

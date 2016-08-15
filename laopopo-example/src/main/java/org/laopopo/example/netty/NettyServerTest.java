@@ -1,16 +1,15 @@
 package org.laopopo.example.netty;
 
-import java.util.concurrent.Executors;
-
+import static org.laopopo.common.serialization.SerializerHolder.serializerImpl;
 import io.netty.channel.ChannelHandlerContext;
+
+import java.util.concurrent.Executors;
 
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.remoting.model.NettyRequestProcessor;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.laopopo.remoting.netty.NettyRemotingServer;
 import org.laopopo.remoting.netty.NettyServerConfig;
-
-import static org.laopopo.common.serialization.SerializerHolder.serializerImpl;
 
 public class NettyServerTest {
 	
@@ -26,7 +25,7 @@ public class NettyServerTest {
 			@Override
 			public RemotingTransporter processRequest(ChannelHandlerContext ctx, RemotingTransporter transporter) throws Exception {
 				System.out.println(transporter);
-				transporter.setCustomHeader(serializerImpl().readObject(transporter.bytes(), TestCommonCustomHeader.class));
+				transporter.setCustomHeader(serializerImpl().readObject(transporter.bytes(), TestCommonCustomBody.class));
 				transporter.setTransporterType(LaopopoProtocol.RESPONSE_REMOTING);
 				return transporter;
 			}

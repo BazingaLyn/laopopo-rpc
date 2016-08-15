@@ -7,8 +7,8 @@ import io.netty.handler.codec.ReplayingDecoder;
 
 import java.util.List;
 
+import org.laopopo.common.exception.remoting.RemotingContextException;
 import org.laopopo.common.protocal.LaopopoProtocol;
-import org.laopopo.remoting.exception.RemotingContextException;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

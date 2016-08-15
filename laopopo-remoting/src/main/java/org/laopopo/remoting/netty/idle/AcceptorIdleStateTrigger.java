@@ -6,7 +6,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 
-import org.laopopo.remoting.exception.RemotingNoSighException;
+import org.laopopo.common.exception.remoting.RemotingNoSighException;
 
 @ChannelHandler.Sharable
 public class AcceptorIdleStateTrigger extends ChannelInboundHandlerAdapter {

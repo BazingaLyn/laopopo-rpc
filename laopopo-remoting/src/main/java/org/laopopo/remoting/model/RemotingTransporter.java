@@ -2,13 +2,15 @@ package org.laopopo.remoting.model;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.laopopo.common.transport.body.CommonCustomBody;
+
 public class RemotingTransporter extends ByteHolder {
 
 	private static final AtomicLong requestId = new AtomicLong(0l);
 
 	private byte code;
 
-	private transient CommonCustomHeader customHeader;
+	private transient CommonCustomBody customHeader;
 
 	private transient long timestamp;
 
@@ -19,7 +21,7 @@ public class RemotingTransporter extends ByteHolder {
 	protected RemotingTransporter() {
 	}
 	
-	public static RemotingTransporter createRequestTransporter(byte code,CommonCustomHeader commonCustomHeader,byte transporterType){
+	public static RemotingTransporter createRequestTransporter(byte code,CommonCustomBody commonCustomHeader,byte transporterType){
 		RemotingTransporter remotingTransporter = new RemotingTransporter();
 		remotingTransporter.setCode(code);
 		remotingTransporter.customHeader = commonCustomHeader;
@@ -60,11 +62,11 @@ public class RemotingTransporter extends ByteHolder {
 		this.timestamp = timestamp;
 	}
 	
-	public CommonCustomHeader getCustomHeader() {
+	public CommonCustomBody getCustomHeader() {
 		return customHeader;
 	}
 
-	public void setCustomHeader(CommonCustomHeader customHeader) {
+	public void setCustomHeader(CommonCustomBody customHeader) {
 		this.customHeader = customHeader;
 	}
 	

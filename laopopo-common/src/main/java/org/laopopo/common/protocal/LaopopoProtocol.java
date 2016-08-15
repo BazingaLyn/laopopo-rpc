@@ -17,7 +17,17 @@ public class LaopopoProtocol {
     
     public static final byte HANDLER_BUSY = -2;
     
+    //provider端向registry发送注册信息的code
+    public static final byte PUBLISH_SERVICE = 65;
+    
+    //心跳
     public static final byte HEARTBEAT = 127;
+
+    //consumer端向registry订阅服务后返回的订阅结果
+	public static final byte SUBCRIBE_RESULT = 66;
+
+	//向monitor端请求某个服务是否审核的请求code
+	public static final byte REQUEST_REVIEW_RESULT = 71;
     
     
     private byte type;

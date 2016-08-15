@@ -11,10 +11,11 @@ import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
+import org.laopopo.common.exception.remoting.RemotingSendRequestException;
+import org.laopopo.common.exception.remoting.RemotingTimeoutException;
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.utils.Pair;
-import org.laopopo.remoting.exception.RemotingSendRequestException;
-import org.laopopo.remoting.exception.RemotingTimeoutException;
+import org.laopopo.remoting.model.NettyChannelInactiveProcessor;
 import org.laopopo.remoting.model.NettyRequestProcessor;
 import org.laopopo.remoting.model.RemotingResponse;
 import org.laopopo.remoting.model.RemotingTransporter;
@@ -37,6 +38,8 @@ public abstract class NettyRemotingBase {
 	protected final ConcurrentHashMap<Long, RemotingResponse> responseTable = new ConcurrentHashMap<Long, RemotingResponse>(256);
 	
 	protected Pair<NettyRequestProcessor, ExecutorService> defaultRequestProcessor;
+	
+	protected Pair<NettyChannelInactiveProcessor, ExecutorService> defaultChannelInactiveProcessor;
 	
 	protected final HashMap<Byte/* request code */, Pair<NettyRequestProcessor, ExecutorService>> processorTable =
             new HashMap<Byte, Pair<NettyRequestProcessor, ExecutorService>>(64);
@@ -102,6 +105,10 @@ public abstract class NettyRemotingBase {
                 break;
             }
         }
+	}
+	
+	protected void processChannelInactive(ChannelHandlerContext ctx) {
+		
 	}
 	
 	protected void processRemotingRequest(final ChannelHandlerContext ctx, final RemotingTransporter remotingTransporter) {

@@ -4,9 +4,10 @@ import io.netty.channel.Channel;
 
 import java.util.concurrent.ExecutorService;
 
+import org.laopopo.common.exception.remoting.RemotingSendRequestException;
+import org.laopopo.common.exception.remoting.RemotingTimeoutException;
 import org.laopopo.common.utils.Pair;
-import org.laopopo.remoting.exception.RemotingSendRequestException;
-import org.laopopo.remoting.exception.RemotingTimeoutException;
+import org.laopopo.remoting.model.NettyChannelInactiveProcessor;
 import org.laopopo.remoting.model.NettyRequestProcessor;
 import org.laopopo.remoting.model.RemotingTransporter;
 
@@ -22,6 +23,8 @@ import org.laopopo.remoting.model.RemotingTransporter;
 public interface RemotingServer extends BaseRemotingService {
 
 	void registerProecessor(final byte requestCode, final NettyRequestProcessor processor,final ExecutorService executor);
+	
+	void registerChannelInactiveProcessor(final NettyChannelInactiveProcessor processor,final ExecutorService executor);
 	
 	void registerDefaultProcessor(final NettyRequestProcessor processor, final ExecutorService executor);
 	

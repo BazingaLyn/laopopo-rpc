@@ -6,6 +6,9 @@ public class NettyClientConfig {
 	private int clientCallbackExecutorThreads = Runtime.getRuntime().availableProcessors();
 	private long connectTimeoutMillis = 3000;
 	private long channelNotActiveInterval = 1000 * 60;
+	
+	//format host:port,host:port
+	private String defaultAddress;
 
 	private int clientChannelMaxIdleTimeSeconds = 120;
 
@@ -14,6 +17,14 @@ public class NettyClientConfig {
 
 	private int writeBufferLowWaterMark = -1;
 	private int writeBufferHighWaterMark = -1;
+
+	public String getDefaultAddress() {
+		return defaultAddress;
+	}
+
+	public void setDefaultAddress(String defaultAddress) {
+		this.defaultAddress = defaultAddress;
+	}
 
 	public int getClientWorkerThreads() {
 		return clientWorkerThreads;

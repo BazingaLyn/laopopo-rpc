@@ -2,9 +2,9 @@ package org.laopopo.remoting.netty;
 
 import java.util.concurrent.ExecutorService;
 
-import org.laopopo.remoting.exception.RemotingException;
-import org.laopopo.remoting.exception.RemotingSendRequestException;
-import org.laopopo.remoting.exception.RemotingTimeoutException;
+import org.laopopo.common.exception.remoting.RemotingException;
+import org.laopopo.common.exception.remoting.RemotingSendRequestException;
+import org.laopopo.common.exception.remoting.RemotingTimeoutException;
 import org.laopopo.remoting.model.NettyRequestProcessor;
 import org.laopopo.remoting.model.RemotingTransporter;
 
