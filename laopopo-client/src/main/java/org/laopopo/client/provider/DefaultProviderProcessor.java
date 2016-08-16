@@ -1,6 +1,5 @@
-package org.laopopo.base.registry;
+package org.laopopo.client.provider;
 
-import static org.laopopo.common.protocal.LaopopoProtocol.PUBLISH_SERVICE;
 import io.netty.channel.ChannelHandlerContext;
 
 import org.laopopo.remoting.ConnectionUtils;
@@ -9,14 +8,21 @@ import org.laopopo.remoting.model.RemotingTransporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DefaultRegistryProcessor implements NettyRequestProcessor {
+/**
+ * 
+ * @author BazingaLyn
+ * @description provider端
+ * @time
+ * @modifytime
+ */
+public class DefaultProviderProcessor implements NettyRequestProcessor {
 	
-	private static final Logger logger = LoggerFactory.getLogger(DefaultRegistryProcessor.class);
+	private static final Logger logger = LoggerFactory.getLogger(DefaultProviderProcessor.class);
 	
-	private DefaultRegistryServer defaultRegistryServer;
+	private DefaultProvider defaultProvider;
 
-	public DefaultRegistryProcessor(DefaultRegistryServer defaultRegistryServer) {
-		this.defaultRegistryServer = defaultRegistryServer;
+	public DefaultProviderProcessor(DefaultProvider defaultProvider) {
+		this.defaultProvider = defaultProvider;
 	}
 
 	@Override
@@ -28,12 +34,6 @@ public class DefaultRegistryProcessor implements NettyRequestProcessor {
                 ConnectionUtils.parseChannelRemoteAddr(ctx.channel()), //
                 request);
         }
-		
-		switch (request.getCode()) {
-		   case PUBLISH_SERVICE:
-			   return this.defaultRegistryServer.getProviderManager().handlerRegister(request,ctx.channel());
-		}
-		
 		
 		return null;
 	}

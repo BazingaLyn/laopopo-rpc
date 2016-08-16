@@ -184,7 +184,7 @@ public class NettyRemotingServer extends NettyRemotingBase implements RemotingSe
         });
 		
 		try {
-			logger.info("netty serverBootstrap start...");
+			logger.info("netty bind [{}] serverBootstrap start...",this.nettyServerConfig.getListenPort());
             this.serverBootstrap.bind().sync();
         }
         catch (InterruptedException e1) {
@@ -285,7 +285,7 @@ public class NettyRemotingServer extends NettyRemotingBase implements RemotingSe
         public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         	processChannelInactive(ctx);
         }
-
+        
 		
     }
 

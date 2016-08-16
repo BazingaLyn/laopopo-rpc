@@ -11,4 +11,10 @@ public class Constants {
 	
 	public static final int WRITER_IDLE_TIME_SECONDS = 30;
 	
+	public static final int DEFAULT_WEIGHT = 50;
+	
+	public static final int DEFAULT_CONNECTION_COUNT = 1;
+	
+	
+	
 }

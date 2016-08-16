@@ -69,6 +69,13 @@ public class ReviewResultCustomBody implements CommonCustomBody {
 	public void setWeightVal(int weightVal) {
 		this.weightVal = weightVal;
 	}
+
+
+
+	@Override
+	public String toString() {
+		return "ReviewResultCustomBody [isReviewPass=" + isReviewPass + ", isDegradeService=" + isDegradeService + ", weightVal=" + weightVal + "]";
+	}
 	
 
 }

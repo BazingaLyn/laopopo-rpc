@@ -22,6 +22,8 @@ public class LaopopoProtocol {
     
     //心跳
     public static final byte HEARTBEAT = 127;
+    
+    public static final byte ACK = 126;
 
     //consumer端向registry订阅服务后返回的订阅结果
 	public static final byte SUBCRIBE_RESULT = 66;

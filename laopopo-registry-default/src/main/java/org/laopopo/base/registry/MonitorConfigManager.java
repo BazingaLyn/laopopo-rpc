@@ -30,14 +30,14 @@ public class MonitorConfigManager {
 	
 	private NettyRemotingClient nettyRemotingClient;
 	
-	private NettyClientConfig clientConfig;
+	private NettyClientConfig linkMonitorClientConfig;
 	
 	private ConcurrentHashMap<String, ReviewRecord> globeReviewMeta = new ConcurrentHashMap<String, ReviewRecord>();
 	
-	public MonitorConfigManager(DefaultRegistryServer defaultRegistryServer, NettyRemotingClient nettyRemotingClient,NettyClientConfig clientConfig) {
+	public MonitorConfigManager(DefaultRegistryServer defaultRegistryServer, NettyRemotingClient nettyRemotingClient,NettyClientConfig linkMonitorClientConfig) {
 		this.defaultRegistryServer = defaultRegistryServer;
 		this.nettyRemotingClient = nettyRemotingClient;
-		this.clientConfig = clientConfig;
+		this.linkMonitorClientConfig = linkMonitorClientConfig;
 	}
 
 	public boolean isReviewed(RegisterMeta meta) {
@@ -74,7 +74,7 @@ public class MonitorConfigManager {
 		
 		
 		RemotingTransporter request = RemotingTransporter.createRequestTransporter(LaopopoProtocol.REQUEST_REVIEW_RESULT, commonCustomHeader, LaopopoProtocol.REQUEST_REMOTING);
-		RemotingTransporter result = nettyRemotingClient.invokeSync(clientConfig.getDefaultAddress(), request, 3000);
+		RemotingTransporter result = nettyRemotingClient.invokeSync(linkMonitorClientConfig.getDefaultAddress(), request, 3000);
 		
 		if(null != result){
 			if(result.getCustomHeader() instanceof ReviewResultCustomBody){

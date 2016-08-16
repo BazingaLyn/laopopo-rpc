@@ -52,6 +52,11 @@ public class DefaultRegistryServer implements RegistryServer {
 	//定时任务
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("registry-timer"));
 	
+    /**
+     * 
+     * @param nettyServerConfig 注册中心的netty的配置文件 至少需要配置listenPort
+     * @param nettyClientConfig 注册中心连接Monitor端的netty配置文件，至少需要配置defaultAddress值 这边monitor是单实例，所以address一个就好
+     */
     public DefaultRegistryServer(NettyServerConfig nettyServerConfig,NettyClientConfig nettyClientConfig) {
     	this.nettyServerConfig = nettyServerConfig;
     	this.nettyClientConfig = nettyClientConfig;

@@ -37,13 +37,17 @@ public abstract class NettyRemotingBase {
 	/******key为请求的opaque value是远程返回的结果封装类******/
 	protected final ConcurrentHashMap<Long, RemotingResponse> responseTable = new ConcurrentHashMap<Long, RemotingResponse>(256);
 	
+	//如果使用者没有对创建的Netty网络段注入某个特定请求的处理器的时候，默认使用该默认的处理器
 	protected Pair<NettyRequestProcessor, ExecutorService> defaultRequestProcessor;
 	
+	//netty网络段channelInactive事件发生的处理器
 	protected Pair<NettyChannelInactiveProcessor, ExecutorService> defaultChannelInactiveProcessor;
 	
+	//注入的某个requestCode对应的处理器放入到HashMap中，键值对一一匹配
 	protected final HashMap<Byte/* request code */, Pair<NettyRequestProcessor, ExecutorService>> processorTable =
             new HashMap<Byte, Pair<NettyRequestProcessor, ExecutorService>>(64);
 
+	//远程端的调用具体实现
 	public RemotingTransporter invokeSyncImpl(final Channel channel,final RemotingTransporter request,final long timeoutMillis) throws RemotingTimeoutException, RemotingSendRequestException, InterruptedException{
 		
 		try {
@@ -91,8 +95,15 @@ public abstract class NettyRemotingBase {
 		}
 	}
 	
+	//ChannelRead0方法对应的具体实现
 	protected void processMessageReceived(ChannelHandlerContext ctx, RemotingTransporter msg) {
+		
+		if(logger.isDebugEnabled()){
+			logger.debug("channel [] received RemotingTransporter is [{}]",ctx.channel(),msg);
+		}
+		
 		final RemotingTransporter remotingTransporter = msg;
+		
         if (remotingTransporter != null) {
             switch (remotingTransporter.getTransporterType()) {
             case REQUEST_REMOTING:
