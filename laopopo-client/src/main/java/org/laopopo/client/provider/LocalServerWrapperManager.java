@@ -29,8 +29,8 @@ import org.slf4j.LoggerFactory;
 /**
  * 
  * @author BazingaLyn
- * @description
- * @time
+ * @description 服务提供者端本地服务的编织管理类 将某个方法的某个方法编织成信息发送给registry
+ * @time 2016年8月16日
  * @modifytime
  */
 public class LocalServerWrapperManager {
@@ -43,15 +43,25 @@ public class LocalServerWrapperManager {
 		this.providerController = providerController;
 	}
 
+	/**
+	 * 
+	 * @param listeningAddress 该服务暴露的网络地址 例如172.30.53.58::8989
+	 * @param controller 全局限流工具
+	 * @param obj 暴露的方法的实例
+	 * @return
+	 */
 	public List<RemotingTransporter> wrapperRegisterInfo(String listeningAddress, FlowController controller, Object... obj) {
 
 		List<RemotingTransporter> remotingTransporters = new ArrayList<RemotingTransporter>();
 		
-		if(null != obj && obj.length > 0){
+		//基本判断，如果暴露的方法是null或者是0，则说明无需编织服务
+		if (null != obj && obj.length > 0) {
 			
-			for(Object o:obj){
+			for (Object o : obj) {
 				
+				//默认的编织对象
 				DefaultServiceWrapper defaultServiceWrapper = new DefaultServiceWrapper();
+				
 				List<ServiceWrapper> serviceWrappers = defaultServiceWrapper.provider(o).flowController(controller).create();
 				
 				if(null != serviceWrappers  && !serviceWrappers.isEmpty()){
@@ -73,7 +83,7 @@ public class LocalServerWrapperManager {
 						commonCustomHeader.setWeight(serviceWrapper.getWeight());
 						commonCustomHeader.setSupportDegradeService(serviceWrapper.isSupportDegradeService());
 						
-						RemotingTransporter remotingTransporter =  RemotingTransporter.createRequestTransporter(LaopopoProtocol.PUBLISH_SERVICE, commonCustomHeader, LaopopoProtocol.REQUEST_REMOTING);
+						RemotingTransporter remotingTransporter =  RemotingTransporter.createRequestTransporter(LaopopoProtocol.PUBLISH_SERVICE, commonCustomHeader);
 						remotingTransporters.add(remotingTransporter);
 					}
 				}
@@ -83,12 +93,21 @@ public class LocalServerWrapperManager {
 		
 	}
 
+	/**
+	 * 
+	 * @author BazingaLyn
+	 * @description 方法编织服务
+	 * @time 2016年8月16日
+	 * @modifytime
+	 */
 	class DefaultServiceWrapper implements ServiceWrapperWorker {
 		
 		//全局拦截proxy
 		private volatile ProviderProxyHandler globalProviderProxyHandler;
 
+		//某个方法实例编织后的对象
 		private Object serviceProvider;
+		//该方法降级时所对应的mock对象实例(最好是两个同样的接口)
 		private Object mockDegradeServiceProvider;
 		protected FlowController flowController;
 		
@@ -100,6 +119,7 @@ public class LocalServerWrapperManager {
 
 		@Override
 		public ServiceWrapperWorker provider(Object serviceProvider) {
+			//如果proxy的对象是null,实例对象无需编织，直接返回
 			if(null  == globalProviderProxyHandler){
 				this.serviceProvider = serviceProvider;
 			}else{
@@ -126,7 +146,9 @@ public class LocalServerWrapperManager {
 			
 			List<ServiceWrapper> serviceWrappers = new ArrayList<ServiceWrapper>();
 			
+			//读取对象的方法注解
 			RPCService rpcService = null;
+			
 			for (Class<?> cls = serviceProvider.getClass(); cls != Object.class; cls = cls.getSuperclass()) {
 				Method[] methods = cls.getMethods();
 				if(null != methods && methods.length > 0){
@@ -135,21 +157,38 @@ public class LocalServerWrapperManager {
 						rpcService = method.getAnnotation(RPCService.class);
 						if(null != rpcService){
 							
+							//服务名
 							String serviceName = StringUtil.isNullOrEmpty(rpcService.serviceName())?method.getName():rpcService.serviceName();
+							//版本号
 							String version = rpcService.version();
+							//方法组别
 							String group = rpcService.group();
+							//负责人
 							String responsiblityName = rpcService.responsibilityName();
+							//方法weight
 							Integer weight = rpcService.weight();
+							//连接数 默认是1 一个实例一个1链接其实是够用的
 							Integer connCount = rpcService.connCount();
+							//是否支持服务降级
 							boolean isSupportDegradeService = rpcService.isSupportDegradeService();
+							//是否是VIP服务，如果是VIP服务，则默认是在port-2的端口暴露方法，与其他的方法使用不同的
 							boolean isVIPService = rpcService.isVIPService();
+							//暴露的降级方法的路径
 							String degradeServicePath = rpcService.degradeServicePath();
+							//降级方法的描述
 							String degradeServiceDesc = rpcService.degradeServiceDesc();
+							//如果是支持服务降级服务，则需要根据降级方法的路径去创建这个实例，并编制proxy
 							if(isSupportDegradeService){
 								Class<?> degradeClass = null;
 								try {
 									degradeClass = Class.forName(degradeServicePath);
-									mockDegradeServiceProvider = degradeClass.newInstance();
+									Object nativeObj = degradeClass.newInstance();
+									if(null  == globalProviderProxyHandler){
+										this.mockDegradeServiceProvider = nativeObj;
+									}else{
+										Class<?> globalProxyCls = generateProviderProxyClass(globalProviderProxyHandler, nativeObj.getClass());
+							            this.mockDegradeServiceProvider = copyProviderProperties(nativeObj, newInstance(globalProxyCls));
+									}
 								} catch (Exception e) {
 									logger.error("[{}] class can not create by reflect [{}]",degradeServicePath,e.getMessage());
 								} 
@@ -176,7 +215,7 @@ public class LocalServerWrapperManager {
 																			   connCount,
 																			   isVIPService,
 																			   flowController);
-									
+							//放入到一个缓存中，方便以后consumer来调取服务的时候，该来获取对应真正的编织类
 							providerController.getProviderContainer().registerService(serviceName, serviceWrapper);
 							
 							serviceWrappers.add(serviceWrapper);

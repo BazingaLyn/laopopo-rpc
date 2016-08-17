@@ -17,7 +17,7 @@ public class NettyClientTest {
 		
 		TestCommonCustomBody commonCustomHeader = new TestCommonCustomBody(1, "test");
 		
-		RemotingTransporter remotingTransporter = RemotingTransporter.createRequestTransporter(TEST, commonCustomHeader, LaopopoProtocol.REQUEST_REMOTING);
+		RemotingTransporter remotingTransporter = RemotingTransporter.createRequestTransporter(TEST, commonCustomHeader);
 		RemotingTransporter request = client.invokeSync("127.0.0.1:18001", remotingTransporter, 3000);
 		System.out.println(request);
 	}

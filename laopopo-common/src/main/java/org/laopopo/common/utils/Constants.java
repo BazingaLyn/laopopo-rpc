@@ -16,5 +16,9 @@ public class Constants {
 	public static final int DEFAULT_CONNECTION_COUNT = 1;
 	
 	
+	public static final String ACK_PUBLISH_SUCCESS = "发布服务成功";
+	
+	public static final String ACK_PUBLISH_FAILURE = "发布服务失败";
+	
 	
 }

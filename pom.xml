@@ -8,13 +8,13 @@
   <modules>
     <module>laopopo-common</module>
     <module>laopopo-registry</module>
-    <module>laopopo-monitor</module>
     <module>laopopo-registry-default</module>
     <module>laopopo-remoting</module>
     <module>laopopo-example</module>
     <module>laopopo-client</module>
-    <module>laopopo-consul</module>
     <module>laopopo-spring-support</module>
+    <module>laopopo-monitor</module>
+    <module>laopopo-console</module>
   </modules>
   
   <properties>
@@ -38,11 +38,6 @@
 			<dependency>
 				<groupId>${project.groupId}</groupId>
 				<artifactId>laopopo-registry</artifactId>
-				<version>${project.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>${project.groupId}</groupId>
-				<artifactId>laopopo-monitor</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>
@@ -77,12 +72,12 @@
 			</dependency>
 			<dependency>
 				<groupId>${project.groupId}</groupId>
-				<artifactId>laopopo-consul</artifactId>
+				<artifactId>laopopo-spring-support</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>${project.groupId}</groupId>
-				<artifactId>laopopo-spring-support</artifactId>
+				<artifactId>laopopo-monitor</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>

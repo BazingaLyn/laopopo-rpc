@@ -25,11 +25,14 @@ public class DefaultMonitor implements MonitorNode {
 	
 	private ExecutorService remotingChannelInactiveExecutor;
 	
+	private MonitorController monitorController;
+	
 	//定时任务
     private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("monitor-timer"));
 	
 	public DefaultMonitor(NettyServerConfig nettyServerConfig) {
 		this.nettyServerConfig = nettyServerConfig;
+		monitorController = new MonitorController(this);
 		initialize();
 	}
 
@@ -48,12 +51,21 @@ public class DefaultMonitor implements MonitorNode {
 	}
 
 	private void registerProcessor() {
-		
+		this.nettyRemotingServer.registerDefaultProcessor(new DefaultMonitorProcessor(this), this.remotingExecutor);
+		this.nettyRemotingServer.registerChannelInactiveProcessor(new DefaultMonitorChannelInactiveProcessor(this), remotingChannelInactiveExecutor);
 	}
 
 	@Override
 	public void start() {
 		this.nettyRemotingServer.start();
+	}
+
+	public MonitorController getMonitorController() {
+		return monitorController;
+	}
+
+	public void setMonitorController(MonitorController monitorController) {
+		this.monitorController = monitorController;
 	}
 	
 

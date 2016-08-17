@@ -2,8 +2,16 @@ package org.laopopo.remoting.model;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.transport.body.CommonCustomBody;
 
+/**
+ * 
+ * @author BazingaLyn 
+ * @description 网络传输的唯一对象
+ * @time 2016年8月10日
+ * @modifytime
+ */
 public class RemotingTransporter extends ByteHolder {
 
 	private static final AtomicLong requestId = new AtomicLong(0l);
@@ -21,11 +29,21 @@ public class RemotingTransporter extends ByteHolder {
 	protected RemotingTransporter() {
 	}
 	
-	public static RemotingTransporter createRequestTransporter(byte code,CommonCustomBody commonCustomHeader,byte transporterType){
+	public static RemotingTransporter createRequestTransporter(byte code,CommonCustomBody commonCustomHeader){
 		RemotingTransporter remotingTransporter = new RemotingTransporter();
 		remotingTransporter.setCode(code);
 		remotingTransporter.customHeader = commonCustomHeader;
-		remotingTransporter.transporterType = transporterType;
+		remotingTransporter.transporterType = LaopopoProtocol.REQUEST_REMOTING;
+		return remotingTransporter;
+	}
+	
+	
+	public static RemotingTransporter createResponseTransporter(byte code,CommonCustomBody commonCustomHeader,long opaque){
+		RemotingTransporter remotingTransporter = new RemotingTransporter();
+		remotingTransporter.setCode(code);
+		remotingTransporter.customHeader = commonCustomHeader;
+		remotingTransporter.setOpaque(opaque);
+		remotingTransporter.transporterType = LaopopoProtocol.RESPONSE_REMOTING;
 		return remotingTransporter;
 	}
 	

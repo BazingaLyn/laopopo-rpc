@@ -19,8 +19,8 @@ import org.slf4j.LoggerFactory;
 /**
  * 
  * @author BazingaLyn
- * @description
- * @time
+ * @description 服务提供者端
+ * @time 2016年8月16日
  * @modifytime
  */
 public class DefaultProvider implements Provider {

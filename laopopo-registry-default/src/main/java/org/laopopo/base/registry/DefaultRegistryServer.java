@@ -39,8 +39,6 @@ public class DefaultRegistryServer implements RegistryServer {
 	//注册中心连接monitor的客户端
 	private NettyRemotingClient nettyRemotingClient;
 	
-	private MonitorConfigManager monitorConfigManager;
-	
 	private RegistryConsumerManager consumerManager;
 	
 	private RegistryProviderManager providerManager;
@@ -70,8 +68,6 @@ public class DefaultRegistryServer implements RegistryServer {
 		 this.remotingServer = new NettyRemotingServer(this.nettyServerConfig);
 		 
 		 this.nettyRemotingClient = new NettyRemotingClient(nettyClientConfig);
-		 
-		 monitorConfigManager = new MonitorConfigManager(this,nettyRemotingClient,nettyClientConfig);
 		 
 		 this.remotingExecutor =
 	                Executors.newFixedThreadPool(nettyServerConfig.getServerWorkerThreads(), new NamedThreadFactory("RegistryCenterExecutorThread_"));
@@ -103,8 +99,5 @@ public class DefaultRegistryServer implements RegistryServer {
 		return providerManager;
 	}
 
-	public MonitorConfigManager getMonitorConfigManager() {
-		return monitorConfigManager;
-	}
 
 }

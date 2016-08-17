@@ -106,9 +106,11 @@ public abstract class NettyRemotingBase {
 		
         if (remotingTransporter != null) {
             switch (remotingTransporter.getTransporterType()) {
+            //作为server端 client端的请求的对应的处理
             case REQUEST_REMOTING:
                 processRemotingRequest(ctx, remotingTransporter);
                 break;
+            //作为客户端，来自server端的响应的处理
             case RESPONSE_REMOTING:
                 processRemotingResponse(ctx, remotingTransporter);
                 break;
@@ -171,11 +173,21 @@ public abstract class NettyRemotingBase {
 	
 	protected abstract RPCHook getRPCHook();
 
+	/**
+	 * client处理server端返回的消息的处理
+	 * @param ctx
+	 * @param remotingTransporter
+	 */
 	protected void processRemotingResponse(ChannelHandlerContext ctx, RemotingTransporter remotingTransporter) {
+		//从缓存篮子里拿出对应请求的对应响应的载体RemotingResponse
 		final RemotingResponse remotingResponse = responseTable.get(remotingTransporter.getOpaque());
+		//不超时的情况下
 		if(null != remotingResponse){
+			//首先先设值，这样会在countdownlatch wait之前把值赋上
 			remotingResponse.setRemotingTransporter(remotingTransporter);
-			
+			//可以直接countdown
+			remotingResponse.putResponse(remotingTransporter);
+			//从篮子中移除
 			responseTable.remove(remotingTransporter.getOpaque());
 		}else {
             logger.warn("received response but matched Id is removed from responseTable maybe timeout");

@@ -5,27 +5,37 @@ import org.laopopo.common.exception.remoting.RemotingCommmonCustomException;
 /**
  * 
  * @author BazingaLyn
- * @description
- * @time
- * @modifytime
+ * @description ack信息
+ * @time 2016年8月16日
+ * @modifytime 2016年8月17日
  */
 public class AckCustomBody implements CommonCustomBody {
 	
-	private int requestId;
+	//request请求id
+	private long requestId;
 	
+	//是否消费处理成功
 	private boolean success;
 	
+	//消费描述
     private String desc;
     
+    
+	public AckCustomBody(long requestId, boolean success, String desc) {
+		this.requestId = requestId;
+		this.success = success;
+		this.desc = desc;
+	}
+
 	@Override
 	public void checkFields() throws RemotingCommmonCustomException {
 	}
 
-	public int getRequestId() {
+	public long getRequestId() {
 		return requestId;
 	}
 
-	public void setRequestId(int requestId) {
+	public void setRequestId(long requestId) {
 		this.requestId = requestId;
 	}
 
