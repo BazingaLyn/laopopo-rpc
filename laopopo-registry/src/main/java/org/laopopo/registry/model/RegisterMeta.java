@@ -14,6 +14,15 @@ public class RegisterMeta {
 	private Address address = new Address();
 
 	private ServiceMeta serviceMeta = new ServiceMeta();
+	
+	// 是否该服务是VIP服务，如果该服务是VIP服务，走特定的channel，也可以有降级的服务
+	private boolean isVIPService;
+	// 是否支持服务降级
+	private boolean isSupportDegradeService;
+	// 降级服务的mock方法的路径
+	private String degradeServicePath;
+	// 降级服务的描述
+	private String degradeServiceDesc;
 	// 服务的权重
 	private volatile int weight;
 	// 建议连接数 hashCode()与equals()不把connCount计算在内
@@ -21,7 +30,19 @@ public class RegisterMeta {
 	
 	private ServiceReviewState isReviewed = ServiceReviewState.HAS_NOT_REVIEWED;
 	
-	private boolean hasDegradeService;
+	private boolean hasDegradeService = false;
+	
+	public RegisterMeta(Address address, ServiceMeta serviceMeta, boolean isVIPService, boolean isSupportDegradeService, String degradeServicePath,
+			String degradeServiceDesc, int weight, int connCount) {
+		this.address = address;
+		this.serviceMeta = serviceMeta;
+		this.isVIPService = isVIPService;
+		this.isSupportDegradeService = isSupportDegradeService;
+		this.degradeServicePath = degradeServicePath;
+		this.degradeServiceDesc = degradeServiceDesc;
+		this.weight = weight;
+		this.connCount = connCount;
+	}
 	
 	public Address getAddress() {
 		return address;
@@ -71,7 +92,37 @@ public class RegisterMeta {
 		this.hasDegradeService = hasDegradeService;
 	}
 
+	public boolean isVIPService() {
+		return isVIPService;
+	}
 
+	public void setVIPService(boolean isVIPService) {
+		this.isVIPService = isVIPService;
+	}
+
+	public boolean isSupportDegradeService() {
+		return isSupportDegradeService;
+	}
+
+	public void setSupportDegradeService(boolean isSupportDegradeService) {
+		this.isSupportDegradeService = isSupportDegradeService;
+	}
+
+	public String getDegradeServicePath() {
+		return degradeServicePath;
+	}
+
+	public void setDegradeServicePath(String degradeServicePath) {
+		this.degradeServicePath = degradeServicePath;
+	}
+
+	public String getDegradeServiceDesc() {
+		return degradeServiceDesc;
+	}
+
+	public void setDegradeServiceDesc(String degradeServiceDesc) {
+		this.degradeServiceDesc = degradeServiceDesc;
+	}
 
 	public static class Address {
 		// 地址
@@ -127,14 +178,7 @@ public class RegisterMeta {
 			return "Address{" + "host='" + host + '\'' + ", port=" + port + '}';
 		}
 	}
-
-
-	public RegisterMeta(Address address, ServiceMeta serviceMeta, int weight, int connCount) {
-		this.address = address;
-		this.serviceMeta = serviceMeta;
-		this.weight = weight;
-		this.connCount = connCount;
-	}
+	
 
 	@Override
 	public boolean equals(Object obj) {
@@ -163,13 +207,16 @@ public class RegisterMeta {
 									  publishServiceCustomBody.getPort());
 		ServiceMeta meta = new ServiceMeta(publishServiceCustomBody.getGroup(), //group
 										   publishServiceCustomBody.getVersion(), 
-										   publishServiceCustomBody.getServiceProviderName(),
-										   publishServiceCustomBody.isVIPService(),
-										   publishServiceCustomBody.isSupportDegradeService(), 
-										   publishServiceCustomBody.getDegradeServicePath(),
-										   publishServiceCustomBody.getDegradeServiceDesc());
+										   publishServiceCustomBody.getServiceProviderName());
 		
-		RegisterMeta registerMeta = new RegisterMeta(address,meta,publishServiceCustomBody.getWeight(),publishServiceCustomBody.getConnCount());
+		RegisterMeta registerMeta = new RegisterMeta(address,meta,
+				publishServiceCustomBody.isVIPService(),
+				publishServiceCustomBody.isSupportDegradeService(),
+				publishServiceCustomBody.getDegradeServicePath(),
+				publishServiceCustomBody.getDegradeServiceDesc(),
+				publishServiceCustomBody.getWeight(),
+				publishServiceCustomBody.getConnCount()
+				);
 		return registerMeta;
 	}
 

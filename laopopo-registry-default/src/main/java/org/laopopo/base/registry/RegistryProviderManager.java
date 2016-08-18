@@ -1,18 +1,27 @@
 package org.laopopo.base.registry;
 
 import static org.laopopo.common.serialization.SerializerHolder.serializerImpl;
+import static org.laopopo.common.utils.Constants.ACK_PUBLISH_CANCEL_FAILURE;
+import static org.laopopo.common.utils.Constants.ACK_PUBLISH_CANCEL_SUCCESS;
 import static org.laopopo.common.utils.Constants.ACK_PUBLISH_FAILURE;
+import static org.laopopo.common.utils.Constants.ACK_PUBLISH_SUCCESS;
 import io.netty.channel.Channel;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 import io.netty.util.internal.ConcurrentSet;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.transport.body.AckCustomBody;
 import org.laopopo.common.transport.body.PublishServiceCustomBody;
+import org.laopopo.common.transport.body.SubcribeRequestCustomBody;
+import org.laopopo.common.transport.body.SubcribeResultCustomBody;
+import org.laopopo.common.transport.body.SubcribeResultCustomBody.ServiceInfo;
 import org.laopopo.registry.model.RegisterMeta;
 import org.laopopo.registry.model.RegisterMeta.Address;
 import org.laopopo.registry.model.ServiceMeta;
@@ -43,10 +52,17 @@ public class RegistryProviderManager implements RegistryProviderServer {
 
 	// 指定节点都注册了哪些服务
     private final ConcurrentMap<Address, ConcurrentSet<ServiceMeta>> globalServiceMetaMap = new ConcurrentHashMap<RegisterMeta.Address, ConcurrentSet<ServiceMeta>>();
-	public RegistryProviderManager(DefaultRegistryServer defaultRegistryServer) {
+	
+    private final ConcurrentMap<ServiceMeta, ConcurrentSet<Channel>> globalConsumerMetaMap = new ConcurrentHashMap<ServiceMeta, ConcurrentSet<Channel>>();
+    
+    
+    public RegistryProviderManager(DefaultRegistryServer defaultRegistryServer) {
 		this.defaultRegistryServer = defaultRegistryServer;
 	}
 
+	/**
+	 * 处理provider服务注册
+	 */
 	@Override
 	public RemotingTransporter handlerRegister(RemotingTransporter remotingTransporter, Channel channel) {
 
@@ -78,17 +94,184 @@ public class RegistryProviderManager implements RegistryProviderServer {
                 this.getServiceMeta(meta.getAddress()).add(serviceMeta);
 			}
 			
+			//判断provider发送的信息已经被成功的存储的情况下，则告之服务注册成功
+			ackCustomBody.setDesc(ACK_PUBLISH_SUCCESS);
+			ackCustomBody.setSuccess(true);
+			
 			//如果审核通过，则通知相关服务的订阅者
 			if(meta.getIsReviewed() == ServiceReviewState.PASS_REVIEW){
-				
 				this.defaultRegistryServer.getConsumerManager().notifyMacthedSubscriber(meta);
-				
 			}
 		}
 		
 		return responseTransporter;
 	}
+	
+	/**
+	 * provider端发送的请求，取消对某个服务的提供
+	 * @param request
+	 * @param channel
+	 * @return
+	 */
+	public RemotingTransporter handlerRegisterCancel(RemotingTransporter request, Channel channel) {
+		
+		//准备好ack信息返回个provider，悲观主义，默认返回失败ack，要求provider重新发送请求
+		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false, ACK_PUBLISH_CANCEL_FAILURE);
+		RemotingTransporter responseTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody,
+				request.getOpaque());
+		
+		//接收到主体信息
+		PublishServiceCustomBody publishServiceCustomBody = serializerImpl().readObject(request.bytes(), PublishServiceCustomBody.class);
 
+		RegisterMeta meta = RegisterMeta.createRegiserMeta(publishServiceCustomBody);
+		
+		handlePublishCancel(meta, channel);
+		
+		ackCustomBody.setDesc(ACK_PUBLISH_CANCEL_SUCCESS);
+		ackCustomBody.setSuccess(true);
+		
+		return responseTransporter;
+	}
+	
+	/**
+	 * 处理consumer的消息订阅，并返回结果
+	 * @param request
+	 * @param channel
+	 * @return
+	 */
+	public RemotingTransporter handleSubscribe(RemotingTransporter request, Channel channel) {
+		
+		SubcribeResultCustomBody subcribeResultCustomBody = new SubcribeResultCustomBody();
+		RemotingTransporter responseTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.SUBCRIBE_RESULT, subcribeResultCustomBody, request.getOpaque());
+		//接收到主体信息
+		SubcribeRequestCustomBody requestCustomBody = serializerImpl().readObject(request.bytes(), SubcribeRequestCustomBody.class);
+		ServiceMeta serviceMeta = new ServiceMeta(requestCustomBody.getGroup(), requestCustomBody.getVersion(), requestCustomBody.getServiceName());
+		//将其降入到channel的group中去
+		this.defaultRegistryServer.getConsumerManager().getSubscriberChannels().add(channel);
+		
+		//存入到消费者中全局变量中去 TODO is need?
+		ConcurrentSet<Channel> channels = globalConsumerMetaMap.get(serviceMeta);
+		if(null == channels){
+			channels = new ConcurrentSet<Channel>();
+		}
+		channels.add(channel);
+		
+		
+		attachSubscribeEventOnChannel(serviceMeta, channel);
+		
+		ConcurrentMap<Address, RegisterMeta> maps = this.getRegisterMeta(serviceMeta);
+		//如果订阅的暂时还没有服务提供者，则返回空列表给订阅者
+        if (maps.isEmpty()) {
+        	return responseTransporter;
+        }
+        
+        buildSubcribeResultCustomBody(maps,subcribeResultCustomBody);
+        
+		return responseTransporter;
+	}
+	
+	private void buildSubcribeResultCustomBody(ConcurrentMap<Address, RegisterMeta> maps, SubcribeResultCustomBody subcribeResultCustomBody) {
+		Collection<RegisterMeta> values = maps.values();
+		if(values != null && values.size() > 0){
+			List<ServiceInfo> serviceInfos = new ArrayList<ServiceInfo>();
+			for(RegisterMeta meta : values){
+				ServiceInfo serviceInfo = new ServiceInfo(meta.getAddress().getHost(), meta.getAddress().getPort(), meta.getServiceMeta().getGroup(),
+						meta.getServiceMeta().getVersion(), meta.getServiceMeta().getServiceProviderName(), meta.isVIPService());
+				serviceInfos.add(serviceInfo);
+			}
+			subcribeResultCustomBody.setServiceInfos(serviceInfos);
+		}
+	}
+
+	private void attachSubscribeEventOnChannel(ServiceMeta serviceMeta, Channel channel) {
+		Attribute<ConcurrentSet<ServiceMeta>> attr = channel.attr(S_SUBSCRIBE_KEY);
+        ConcurrentSet<ServiceMeta> serviceMetaSet = attr.get();
+        if (serviceMetaSet == null) {
+            ConcurrentSet<ServiceMeta> newServiceMetaSet = new ConcurrentSet<ServiceMeta>();
+            serviceMetaSet = attr.setIfAbsent(newServiceMetaSet);
+            if (serviceMetaSet == null) {
+                serviceMetaSet = newServiceMetaSet;
+            }
+        }
+        serviceMetaSet.add(serviceMeta);
+	}
+
+	/***
+	 * 服务下线的接口
+	 * @param meta
+	 * @param channel
+	 */
+	public void handlePublishCancel(RegisterMeta meta, Channel channel) {
+
+		if (logger.isDebugEnabled()) {
+			logger.info("Cancel publish {} on channel{}.", meta, channel);
+		}
+
+		attachPublishCancelEventOnChannel(meta, channel);
+
+		final ServiceMeta serviceMeta = meta.getServiceMeta();
+		ConcurrentMap<Address, RegisterMeta> maps = this.getRegisterMeta(serviceMeta);
+		if (maps.isEmpty()) {
+			return;
+		}
+		
+		synchronized (globalRegisterInfoMap) {
+			
+			Address address = meta.getAddress();
+            RegisterMeta data = maps.remove(address);
+            
+            if (data != null) {
+                this.getServiceMeta(address).remove(serviceMeta);
+                
+                this.defaultRegistryServer.getConsumerManager().notifyMacthedSubscriberOver(meta);
+            }
+		}
+	}
+
+	
+
+	/*
+	 * ======================================分隔符，以上为核心方法，下面为内部方法==============================
+	 */
+
+
+	private void attachPublishCancelEventOnChannel(RegisterMeta meta, Channel channel) {
+		Attribute<ConcurrentSet<RegisterMeta>> attr = channel.attr(S_PUBLISH_KEY);
+		ConcurrentSet<RegisterMeta> registerMetaSet = attr.get();
+		if (registerMetaSet == null) {
+			ConcurrentSet<RegisterMeta> newRegisterMetaSet = new ConcurrentSet<>();
+			registerMetaSet = attr.setIfAbsent(newRegisterMetaSet);
+			if (registerMetaSet == null) {
+				registerMetaSet = newRegisterMetaSet;
+			}
+		}
+
+		registerMetaSet.remove(meta);
+	}
+
+
+	private boolean isChannelSubscribeOnServiceMeta(ServiceMeta serviceMeta, Channel channel) {
+//		ConcurrentSet<ServiceMeta> serviceMetaSet = channel.attr(S_SUBSCRIBE_KEY).get();
+//
+//		return serviceMetaSet != null && serviceMetaSet.contains(serviceMeta);
+		return true;
+	}
+
+	private void attachPublishEventOnChannel(RegisterMeta meta, Channel channel) {
+
+		Attribute<ConcurrentSet<RegisterMeta>> attr = channel.attr(S_PUBLISH_KEY);
+		ConcurrentSet<RegisterMeta> registerMetaSet = attr.get();
+		if (registerMetaSet == null) {
+			ConcurrentSet<RegisterMeta> newRegisterMetaSet = new ConcurrentSet<>();
+			registerMetaSet = attr.setIfAbsent(newRegisterMetaSet);
+			if (registerMetaSet == null) {
+				registerMetaSet = newRegisterMetaSet;
+			}
+		}
+
+		registerMetaSet.add(meta);
+	}
+	
 	private ConcurrentSet<ServiceMeta> getServiceMeta(Address address) {
 		ConcurrentSet<ServiceMeta> serviceMetaSet = globalServiceMetaMap.get(address);
         if (serviceMetaSet == null) {
@@ -113,62 +296,5 @@ public class RegistryProviderManager implements RegistryProviderServer {
         return maps;
 	}
 
-	public void handlePublishCancel(RegisterMeta meta, Channel channel) {
-
-		if (logger.isDebugEnabled()) {
-			logger.info("Cancel publish {} on channel{}.", meta, channel);
-		}
-
-//		attachPublishCancelEventOnChannel(meta, channel);
-//
-//		final ServiceMeta serviceMeta = meta.getServiceMeta();
-//		ConcurrentMap<Address, RegisterMeta> config = this.getRegisterMeta(serviceMeta);
-//		if (config.isEmpty()) {
-//			return;
-//		}
-
-
-	}
-
-	/*
-	 * ======================================分隔符，以上为核心方法，下面为内部方法=======================
-	 */
-
-
-	private void attachPublishCancelEventOnChannel(RegisterMeta meta, Channel channel) {
-		Attribute<ConcurrentSet<RegisterMeta>> attr = channel.attr(S_PUBLISH_KEY);
-		ConcurrentSet<RegisterMeta> registerMetaSet = attr.get();
-		if (registerMetaSet == null) {
-			ConcurrentSet<RegisterMeta> newRegisterMetaSet = new ConcurrentSet<>();
-			registerMetaSet = attr.setIfAbsent(newRegisterMetaSet);
-			if (registerMetaSet == null) {
-				registerMetaSet = newRegisterMetaSet;
-			}
-		}
-
-		registerMetaSet.remove(meta);
-	}
-
-
-	private boolean isChannelSubscribeOnServiceMeta(ServiceMeta serviceMeta, Channel channel) {
-		ConcurrentSet<ServiceMeta> serviceMetaSet = channel.attr(S_SUBSCRIBE_KEY).get();
-
-		return serviceMetaSet != null && serviceMetaSet.contains(serviceMeta);
-	}
-
-	private void attachPublishEventOnChannel(RegisterMeta meta, Channel channel) {
-
-		Attribute<ConcurrentSet<RegisterMeta>> attr = channel.attr(S_PUBLISH_KEY);
-		ConcurrentSet<RegisterMeta> registerMetaSet = attr.get();
-		if (registerMetaSet == null) {
-			ConcurrentSet<RegisterMeta> newRegisterMetaSet = new ConcurrentSet<>();
-			registerMetaSet = attr.setIfAbsent(newRegisterMetaSet);
-			if (registerMetaSet == null) {
-				registerMetaSet = newRegisterMetaSet;
-			}
-		}
-
-		registerMetaSet.add(meta);
-	}
 
 }

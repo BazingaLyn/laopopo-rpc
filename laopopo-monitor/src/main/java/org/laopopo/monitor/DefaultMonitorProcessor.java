@@ -1,6 +1,5 @@
 package org.laopopo.monitor;
 
-import static org.laopopo.common.protocal.LaopopoProtocol.REQUEST_REVIEW_RESULT;
 import io.netty.channel.ChannelHandlerContext;
 
 import org.laopopo.remoting.ConnectionUtils;
@@ -37,8 +36,6 @@ public class DefaultMonitorProcessor implements NettyRequestProcessor {
         }
 		
 		switch (request.getCode()) {
-		   case REQUEST_REVIEW_RESULT:
-			   return this.defaultMonitor.getMonitorController().handlerCheckIsReview(request,ctx.channel());
 		}
 		return null;
 	}

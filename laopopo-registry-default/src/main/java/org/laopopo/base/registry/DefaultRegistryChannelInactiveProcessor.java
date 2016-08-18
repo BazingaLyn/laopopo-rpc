@@ -55,7 +55,7 @@ public class DefaultRegistryChannelInactiveProcessor implements NettyChannelInac
         }
 
         if (address != null) {
-            // 通知所有订阅者对应机器下线
+            // 通知所有订阅者对应机器下线  
             this.defaultRegistryServer.getConsumerManager().handleOfflineNotice(address);
         }
 	}

@@ -8,8 +8,12 @@ import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import io.netty.util.internal.ConcurrentSet;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.transport.body.SubcribeResultCustomBody;
+import org.laopopo.common.transport.body.SubcribeResultCustomBody.ServiceInfo;
 import org.laopopo.registry.model.RegisterMeta;
 import org.laopopo.registry.model.RegisterMeta.Address;
 import org.laopopo.registry.model.ServiceMeta;
@@ -25,13 +29,13 @@ import org.slf4j.LoggerFactory;
  * @modifytime
  */
 public class RegistryConsumerManager {
-	
+
 	private static final Logger logger = LoggerFactory.getLogger(RegistryConsumerManager.class);
-	
+
 	private DefaultRegistryServer defaultRegistryServer;
-	
+
 	private static final AttributeKey<ConcurrentSet<ServiceMeta>> S_SUBSCRIBE_KEY = AttributeKey.valueOf("server.subscribed");
-	
+
 	private final ChannelGroup subscriberChannels = new DefaultChannelGroup("subscribers", GlobalEventExecutor.INSTANCE);
 
 	public RegistryConsumerManager(DefaultRegistryServer defaultRegistryServer) {
@@ -42,27 +46,37 @@ public class RegistryConsumerManager {
 		return subscriberChannels;
 	}
 
+	/**
+	 * 通知consumer该地址的所有服务都下线
+	 * 
+	 * @param address
+	 *            
+	 */
 	public void handleOfflineNotice(Address address) {
-		
+
 	}
 
 	/**
 	 * 通知相关的订阅者服务的信息
+	 * 
 	 * @param meta
 	 */
 	public void notifyMacthedSubscriber(final RegisterMeta meta) {
 		
-		SubcribeResultCustomBody subcribeResultCustomBody = new SubcribeResultCustomBody(meta.getAddress().getHost(), meta.getAddress().getPort(), meta
-				.getServiceMeta().getGroup(), meta.getServiceMeta().getVersion(), meta.getServiceMeta().getServiceProviderName(), meta.getServiceMeta()
-				.isVIPService());
+		// 构建订阅通知的主体传输对象
+		SubcribeResultCustomBody subcribeResultCustomBody = new SubcribeResultCustomBody();
+		buildSubcribeResultCustomBody(meta,subcribeResultCustomBody);
 
+		// 传送给consumer对象的RemotingTransporter
 		RemotingTransporter sendConsumerRemotingTrasnporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.SUBCRIBE_RESULT,
 				subcribeResultCustomBody);
-		
+
+		// 所有的订阅者的channel集合
 		subscriberChannels.writeAndFlush(sendConsumerRemotingTrasnporter, new ChannelMatcher() {
 
 			@Override
 			public boolean matches(Channel channel) {
+				//
 				boolean doSend = isChannelSubscribeOnServiceMeta(meta.getServiceMeta(), channel);
 				// TODO
 				// if (doSend) {
@@ -76,12 +90,67 @@ public class RegistryConsumerManager {
 
 		});
 	}
-	
+
+
+	public void notifyMacthedSubscriberOver(final RegisterMeta meta) {
+		
+		// 构建订阅通知的主体传输对象
+		SubcribeResultCustomBody subcribeResultCustomBody = new SubcribeResultCustomBody();
+		buildSubcribeResultCustomBody(meta,subcribeResultCustomBody);
+		
+		RemotingTransporter sendConsumerRemotingTrasnporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.SUBCRIBE_SERVICE_CANCEL,
+				subcribeResultCustomBody);
+		
+		// 所有的订阅者的channel集合
+		subscriberChannels.writeAndFlush(sendConsumerRemotingTrasnporter, new ChannelMatcher() {
+
+			@Override
+			public boolean matches(Channel channel) {
+				//
+				boolean doSend = isChannelSubscribeOnServiceMeta(meta.getServiceMeta(), channel);
+				// TODO
+				// if (doSend) {
+				// MessageNonAck msgNonAck = new
+				// MessageNonAck(serviceMeta, msg, channel);
+				// // 收到ack后会移除当前key(参见handleAcknowledge), 否则超时超时重发
+				// messagesNonAck.put(msgNonAck.id, msgNonAck);
+				// }
+				return doSend;
+			}
+
+		});
+
+	}
+
+	/**
+	 * 因为在consumer订阅服务的时候，就会在其channel上绑定其订阅的信息
+	 * 
+	 * @param serviceMeta
+	 * @param channel
+	 * @return
+	 */
 	private boolean isChannelSubscribeOnServiceMeta(ServiceMeta serviceMeta, Channel channel) {
 		ConcurrentSet<ServiceMeta> serviceMetaSet = channel.attr(S_SUBSCRIBE_KEY).get();
 
 		return serviceMetaSet != null && serviceMetaSet.contains(serviceMeta);
 	}
 	
+	/**
+	 * 构建返回给consumer的返回主体对象
+	 * @param meta
+	 * @param subcribeResultCustomBody
+	 */
+	private void buildSubcribeResultCustomBody(RegisterMeta meta, SubcribeResultCustomBody subcribeResultCustomBody) {
+		List<ServiceInfo> serviceInfos = new ArrayList<ServiceInfo>();	
+		
+		ServiceInfo  info = new ServiceInfo(meta.getAddress().getHost(), // 服务的提供地址
+				meta.getAddress().getPort(), // 服务提供端口
+				meta.getServiceMeta().getGroup(), // 服务的组别
+				meta.getServiceMeta().getVersion(), // 服务的版本
+				meta.getServiceMeta().getServiceProviderName(), // 服务名
+				meta.isVIPService()); // 是否为VIP服务 如果是，consumer调用的时候就会port-2 连接调用
+		serviceInfos.add(info);
+		subcribeResultCustomBody.setServiceInfos(serviceInfos);
+	}
 
 }

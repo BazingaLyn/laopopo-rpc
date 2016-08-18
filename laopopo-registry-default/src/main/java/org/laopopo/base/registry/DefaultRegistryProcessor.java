@@ -1,6 +1,8 @@
 package org.laopopo.base.registry;
 
+import static org.laopopo.common.protocal.LaopopoProtocol.PUBLISH_CANCEL_SERVICE;
 import static org.laopopo.common.protocal.LaopopoProtocol.PUBLISH_SERVICE;
+import static org.laopopo.common.protocal.LaopopoProtocol.SUBSCRIBE_SERVICE;
 import io.netty.channel.ChannelHandlerContext;
 
 import org.laopopo.remoting.ConnectionUtils;
@@ -32,6 +34,10 @@ public class DefaultRegistryProcessor implements NettyRequestProcessor {
 		switch (request.getCode()) {
 		   case PUBLISH_SERVICE:
 			   return this.defaultRegistryServer.getProviderManager().handlerRegister(request,ctx.channel());
+		   case PUBLISH_CANCEL_SERVICE:
+			   return this.defaultRegistryServer.getProviderManager().handlerRegisterCancel(request,ctx.channel());
+		   case SUBSCRIBE_SERVICE:
+			   return this.defaultRegistryServer.getProviderManager().handleSubscribe(request, ctx.channel());
 		}
 		
 		
