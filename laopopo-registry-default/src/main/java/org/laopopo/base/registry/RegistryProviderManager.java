@@ -24,7 +24,6 @@ import org.laopopo.common.transport.body.SubcribeResultCustomBody;
 import org.laopopo.common.transport.body.SubcribeResultCustomBody.ServiceInfo;
 import org.laopopo.registry.model.RegisterMeta;
 import org.laopopo.registry.model.RegisterMeta.Address;
-import org.laopopo.registry.model.ServiceMeta;
 import org.laopopo.registry.model.ServiceReviewState;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.slf4j.Logger;
@@ -43,17 +42,17 @@ public class RegistryProviderManager implements RegistryProviderServer {
 
 	private static final Logger logger = LoggerFactory.getLogger(RegistryProviderManager.class);
 
-	private static final AttributeKey<ConcurrentSet<ServiceMeta>> S_SUBSCRIBE_KEY = AttributeKey.valueOf("server.subscribed");
+	private static final AttributeKey<ConcurrentSet<String>> S_SUBSCRIBE_KEY = AttributeKey.valueOf("server.subscribed");
 	private static final AttributeKey<ConcurrentSet<RegisterMeta>> S_PUBLISH_KEY = AttributeKey.valueOf("server.published");
 
 	private DefaultRegistryServer defaultRegistryServer;
 	
-	private final ConcurrentMap<ServiceMeta, ConcurrentMap<Address, RegisterMeta>> globalRegisterInfoMap = new ConcurrentHashMap<ServiceMeta, ConcurrentMap<Address,RegisterMeta>>();
+	private final ConcurrentMap<String, ConcurrentMap<Address, RegisterMeta>> globalRegisterInfoMap = new ConcurrentHashMap<String, ConcurrentMap<Address,RegisterMeta>>();
 
 	// 指定节点都注册了哪些服务
-    private final ConcurrentMap<Address, ConcurrentSet<ServiceMeta>> globalServiceMetaMap = new ConcurrentHashMap<RegisterMeta.Address, ConcurrentSet<ServiceMeta>>();
+    private final ConcurrentMap<Address, ConcurrentSet<String>> globalServiceMetaMap = new ConcurrentHashMap<RegisterMeta.Address, ConcurrentSet<String>>();
 	
-    private final ConcurrentMap<ServiceMeta, ConcurrentSet<Channel>> globalConsumerMetaMap = new ConcurrentHashMap<ServiceMeta, ConcurrentSet<Channel>>();
+    private final ConcurrentMap<String, ConcurrentSet<Channel>> globalConsumerMetaMap = new ConcurrentHashMap<String, ConcurrentSet<Channel>>();
     
     
     public RegistryProviderManager(DefaultRegistryServer defaultRegistryServer) {
@@ -84,7 +83,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		attachPublishEventOnChannel(meta, channel);
 
 		//一个服务的最小单元，也是确定一个服务的最小单位
-		final ServiceMeta serviceMeta = meta.getServiceMeta();
+		final String serviceMeta = meta.getServiceName();
 		//找出提供此服务的全部地址和该服务在该地址下的审核情况
 		ConcurrentMap<Address, RegisterMeta> maps = this.getRegisterMeta(serviceMeta);
 		
@@ -145,7 +144,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		RemotingTransporter responseTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.SUBCRIBE_RESULT, subcribeResultCustomBody, request.getOpaque());
 		//接收到主体信息
 		SubcribeRequestCustomBody requestCustomBody = serializerImpl().readObject(request.bytes(), SubcribeRequestCustomBody.class);
-		ServiceMeta serviceMeta = new ServiceMeta(requestCustomBody.getGroup(), requestCustomBody.getVersion(), requestCustomBody.getServiceName());
+		String serviceMeta = requestCustomBody.getServiceName();
 		//将其降入到channel的group中去
 		this.defaultRegistryServer.getConsumerManager().getSubscriberChannels().add(channel);
 		
@@ -183,7 +182,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 
 		attachPublishCancelEventOnChannel(meta, channel);
 
-		final ServiceMeta serviceMeta = meta.getServiceMeta();
+		final String serviceMeta = meta.getServiceName();
 		ConcurrentMap<Address, RegisterMeta> maps = this.getRegisterMeta(serviceMeta);
 		if (maps.isEmpty()) {
 			return;
@@ -239,7 +238,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 	}
 
 
-	private boolean isChannelSubscribeOnServiceMeta(ServiceMeta serviceMeta, Channel channel) {
+	private boolean isChannelSubscribeOnServiceMeta(String serviceMeta, Channel channel) {
 //		ConcurrentSet<ServiceMeta> serviceMetaSet = channel.attr(S_SUBSCRIBE_KEY).get();
 //
 //		return serviceMetaSet != null && serviceMetaSet.contains(serviceMeta);
@@ -261,10 +260,10 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		registerMetaSet.add(meta);
 	}
 	
-	private ConcurrentSet<ServiceMeta> getServiceMeta(Address address) {
-		ConcurrentSet<ServiceMeta> serviceMetaSet = globalServiceMetaMap.get(address);
+	private ConcurrentSet<String> getServiceMeta(Address address) {
+		ConcurrentSet<String> serviceMetaSet = globalServiceMetaMap.get(address);
         if (serviceMetaSet == null) {
-            ConcurrentSet<ServiceMeta> newServiceMetaSet = new ConcurrentSet<>();
+            ConcurrentSet<String> newServiceMetaSet = new ConcurrentSet<>();
             serviceMetaSet = globalServiceMetaMap.putIfAbsent(address, newServiceMetaSet);
             if (serviceMetaSet == null) {
                 serviceMetaSet = newServiceMetaSet;
@@ -273,7 +272,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
         return serviceMetaSet;
 	}
 
-	private ConcurrentMap<Address, RegisterMeta> getRegisterMeta(ServiceMeta serviceMeta) {
+	private ConcurrentMap<Address, RegisterMeta> getRegisterMeta(String serviceMeta) {
 		ConcurrentMap<Address, RegisterMeta> maps = globalRegisterInfoMap.get(serviceMeta);
         if (maps == null) {
             ConcurrentMap<Address, RegisterMeta> newMaps = new ConcurrentHashMap<RegisterMeta.Address, RegisterMeta>();
@@ -296,8 +295,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 				//判断是否人工审核过，审核过的情况下，组装给consumer的响应主体，返回个consumer
 				if(meta.getIsReviewed() == ServiceReviewState.PASS_REVIEW){
 					
-					ServiceInfo serviceInfo = new ServiceInfo(meta.getAddress().getHost(), meta.getAddress().getPort(), meta.getServiceMeta().getGroup(),
-							meta.getServiceMeta().getVersion(), meta.getServiceMeta().getServiceProviderName(), meta.isVIPService(),meta.getWeight(),meta.getConnCount());
+					ServiceInfo serviceInfo = new ServiceInfo(meta.getAddress().getHost(), meta.getAddress().getPort(), meta.getServiceName(), meta.isVIPService(),meta.getWeight(),meta.getConnCount());
 					serviceInfos.add(serviceInfo);
 				}
 			}
@@ -305,11 +303,11 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		}
 	}
 
-	private void attachSubscribeEventOnChannel(ServiceMeta serviceMeta, Channel channel) {
-		Attribute<ConcurrentSet<ServiceMeta>> attr = channel.attr(S_SUBSCRIBE_KEY);
-        ConcurrentSet<ServiceMeta> serviceMetaSet = attr.get();
+	private void attachSubscribeEventOnChannel(String serviceMeta, Channel channel) {
+		Attribute<ConcurrentSet<String>> attr = channel.attr(S_SUBSCRIBE_KEY);
+        ConcurrentSet<String> serviceMetaSet = attr.get();
         if (serviceMetaSet == null) {
-            ConcurrentSet<ServiceMeta> newServiceMetaSet = new ConcurrentSet<ServiceMeta>();
+            ConcurrentSet<String> newServiceMetaSet = new ConcurrentSet<String>();
             serviceMetaSet = attr.setIfAbsent(newServiceMetaSet);
             if (serviceMetaSet == null) {
                 serviceMetaSet = newServiceMetaSet;

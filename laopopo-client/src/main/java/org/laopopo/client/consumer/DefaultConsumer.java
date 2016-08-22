@@ -59,9 +59,9 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 	}
 
 	 @Override
-	public void subcribeService(SubcribeService... subcribeServices) {
-		 if(subcribeServices.length > 0){
-			 this.defaultConsumerRegistry.subcribeService(subcribeServices);
+	public void subcribeService(String... serviceNames) {
+		 if(serviceNames.length > 0){
+			 this.defaultConsumerRegistry.subcribeService(serviceNames);
 		 }
 		
 	}

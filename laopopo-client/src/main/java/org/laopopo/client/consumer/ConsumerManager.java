@@ -1,10 +1,10 @@
 package org.laopopo.client.consumer;
 
 import static org.laopopo.common.serialization.SerializerHolder.serializerImpl;
+import static org.laopopo.common.utils.Constants.ACK_SUBCRIBE_SERVICE_CANCEL_FAIL;
+import static org.laopopo.common.utils.Constants.ACK_SUBCRIBE_SERVICE_CANCEL_SUCCESS;
 import static org.laopopo.common.utils.Constants.ACK_SUBCRIBE_SERVICE_FAILED;
 import static org.laopopo.common.utils.Constants.ACK_SUBCRIBE_SERVICE_SUCCESS;
-import static org.laopopo.common.utils.Constants.ACK_SUBCRIBE_SERVICE_CANCEL_SUCCESS;
-import static org.laopopo.common.utils.Constants.ACK_SUBCRIBE_SERVICE_CANCEL_FAIL;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 
@@ -16,7 +16,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import org.laopopo.client.consumer.ConsumerRegistry.SubcribeService;
 import org.laopopo.client.preheater.ConectionPreHeater;
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.transport.body.AckCustomBody;
@@ -45,7 +44,7 @@ public class ConsumerManager {
 
 	private final ReentrantReadWriteLock registriesLock = new ReentrantReadWriteLock();
 
-	private final Map<SubcribeService, List<ServiceInfo>> registries = new ConcurrentHashMap<ConsumerRegistry.SubcribeService, List<ServiceInfo>>();
+	private final Map<String, List<ServiceInfo>> registries = new ConcurrentHashMap<String, List<ServiceInfo>>();
 	// TODO group中健康度的检查 定时任务
 	protected final ConcurrentMap<UnresolvedAddress, ChannelGroup> addressGroups = new ConcurrentHashMap<UnresolvedAddress, ChannelGroup>();
 
@@ -64,20 +63,19 @@ public class ConsumerManager {
 		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false, ACK_SUBCRIBE_SERVICE_FAILED);
 		RemotingTransporter responseTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, request.getOpaque());
 
-		SubcribeService subcribeService = null;
-		
 		SubcribeResultCustomBody subcribeResultCustomBody = serializerImpl().readObject(request.bytes(), SubcribeResultCustomBody.class);
 
+		String serviceName = null;
 		if (subcribeResultCustomBody != null && subcribeResultCustomBody.getServiceInfos() != null && !subcribeResultCustomBody.getServiceInfos().isEmpty()) {
 
 			for (ServiceInfo serivceInfo : subcribeResultCustomBody.getServiceInfos()) {
-				if(null == subcribeService){
-					subcribeService = new SubcribeService(serivceInfo.getGroup(), serivceInfo.getVersion(), serivceInfo.getServiceProviderName());
+				if(null == serviceName){
+					serviceName = serivceInfo.getServiceProviderName();
 				}
-				notify(subcribeService, serivceInfo,ServiceInfoState.CHILD_ADDED);
+				notify(serviceName, serivceInfo,ServiceInfoState.CHILD_ADDED);
 			}
 			//到此为止，说明该服务的链路已经建立成功，该服务算预热成功，可以远程调用
-			ConectionPreHeater.finishPreConnection(subcribeService);
+			ConectionPreHeater.finishPreConnection(serviceName);
 		}
 
 		ackCustomBody.setDesc(ACK_SUBCRIBE_SERVICE_SUCCESS);
@@ -95,17 +93,12 @@ public class ConsumerManager {
 		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false, ACK_SUBCRIBE_SERVICE_CANCEL_FAIL);
 		RemotingTransporter responseTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, request.getOpaque());
 
-		SubcribeService subcribeService = null;
-		
 		SubcribeResultCustomBody subcribeResultCustomBody = serializerImpl().readObject(request.bytes(), SubcribeResultCustomBody.class);
 
 		if (subcribeResultCustomBody != null && subcribeResultCustomBody.getServiceInfos() != null && !subcribeResultCustomBody.getServiceInfos().isEmpty()) {
 
 			for (ServiceInfo serivceInfo : subcribeResultCustomBody.getServiceInfos()) {
-				if(null == subcribeService){
-					subcribeService = new SubcribeService(serivceInfo.getGroup(), serivceInfo.getVersion(), serivceInfo.getServiceProviderName());
-				}
-				notify(subcribeService, serivceInfo,ServiceInfoState.CHILD_REMOVED);
+				notify(serivceInfo.getServiceProviderName(), serivceInfo,ServiceInfoState.CHILD_REMOVED);
 			}
 		}
 
@@ -130,14 +123,14 @@ public class ConsumerManager {
 
 	/************************* ↑为核心方法，下面为内部方法 ************************/
 
-	private void notify(SubcribeService subcribeService, ServiceInfo serivceInfo, ServiceInfoState event) {
+	private void notify(String serviceName, ServiceInfo serivceInfo, ServiceInfoState event) {
 
 		boolean notifyNeeded = false;
 
 		final Lock writeLock = registriesLock.writeLock();
 		writeLock.lock();
 		try {
-			List<ServiceInfo> infos = registries.get(subcribeService);
+			List<ServiceInfo> infos = registries.get(serviceName);
 			if (infos == null) {
 				if (event == ServiceInfoState.CHILD_REMOVED) {
 					return;
@@ -153,7 +146,7 @@ public class ConsumerManager {
 				}
 				notifyNeeded = true;
 			}
-			registries.put(subcribeService, infos);
+			registries.put(serviceName, infos);
 		} finally {
 			writeLock.unlock();
 		}
@@ -183,10 +176,10 @@ public class ConsumerManager {
 							group.add(channel);
 						}
 					}
-					ServiceChannelGroup.addIfAbsent(subcribeService,group);
+					ServiceChannelGroup.addIfAbsent(serviceName,group);
 				}
 			}else if(event == ServiceInfoState.CHILD_REMOVED){
-				ServiceChannelGroup.removedIfAbsent(subcribeService, group);
+				ServiceChannelGroup.removedIfAbsent(serviceName, group);
 				//TODO 这边如果此channel只被一个服务使用，那么此时应该最好是关闭channel
 			}
 		}

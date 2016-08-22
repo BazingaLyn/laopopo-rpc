@@ -16,16 +16,6 @@ public class ConsumerClient extends DefaultConsumer {
 	}
 
 	@Override
-	public Object call(SubcribeService subcribeService, Object... args) throws Throwable {
-		return null;
-	}
-
-	@Override
-	public Object call(SubcribeService subcribeService, long timeout, Object... args) throws Throwable {
-		return null;
-	}
-
-	@Override
 	public Object call(String serviceName, long timeout, Object... args) throws Throwable {
 		return null;
 	}

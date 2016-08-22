@@ -2,7 +2,6 @@ package org.laopopo.client.consumer;
 
 import io.netty.channel.Channel;
 
-import org.laopopo.client.consumer.ConsumerRegistry.SubcribeService;
 import org.laopopo.common.exception.remoting.RemotingSendRequestException;
 import org.laopopo.common.exception.remoting.RemotingTimeoutException;
 import org.laopopo.common.protocal.LaopopoProtocol;
@@ -31,7 +30,7 @@ public class DefaultConsumerRegistry {
 		this.timeout = this.defaultConsumer.getConsumerConfig().getRegistryTimeout();
 	}
 
-	public void subcribeService(SubcribeService... subcribeServices) {
+	public void subcribeService(String... serviceName) {
 		
 		if(this.defaultConsumer.getRegistyChannel() == null){
 			this.defaultConsumer.getOrUpdateHealthyChannel();
@@ -40,12 +39,10 @@ public class DefaultConsumerRegistry {
 		if(this.defaultConsumer.getRegistyChannel() != null){
 			
 			logger.info("registry center channel is [{}]",this.defaultConsumer.getRegistyChannel());
-			for (SubcribeService service : subcribeServices) {
+			for (String service : serviceName) {
 
 				SubcribeRequestCustomBody body = new SubcribeRequestCustomBody();
-				body.setGroup(service.getGroup());
-				body.setVersion(service.getVersion());
-				body.setServiceName(service.getServiceName());
+				body.setServiceName(service);
 
 				RemotingTransporter remotingTransporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.SUBSCRIBE_SERVICE, body);
 				try {

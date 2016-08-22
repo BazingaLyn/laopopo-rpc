@@ -7,7 +7,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.laopopo.client.consumer.ConsumerRegistry.SubcribeService;
 import org.laopopo.common.exception.remoting.RemotingTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,13 +16,13 @@ public class ConectionPreHeater {
 
 	private static final Logger logger = LoggerFactory.getLogger(ConectionPreHeater.class);
 
-	private static final ConcurrentMap<SubcribeService, ConectionPreHeater> preHeaterGather = new ConcurrentHashMap<SubcribeService, ConectionPreHeater>();
+	private static final ConcurrentMap<String, ConectionPreHeater> preHeaterGather = new ConcurrentHashMap<String, ConectionPreHeater>();
 
 	private final ReentrantLock lock = new ReentrantLock();
 
 	private final Condition doneCondition = lock.newCondition();
 
-	private final SubcribeService subcribeService;
+	private final String serviceName;
 
 	public static final long DEFAULT_TIMEOUT = 5 * 1000;
 
@@ -31,28 +30,28 @@ public class ConectionPreHeater {
 
 	private Object readyState;
 
-	public ConectionPreHeater(SubcribeService subcribeService, long timeoutMillis) {
-		this.subcribeService = subcribeService;
+	public ConectionPreHeater(String serviceName, long timeoutMillis) {
+		this.serviceName = serviceName;
 		this.timeoutMillis = timeoutMillis > 0 ? timeoutMillis : DEFAULT_TIMEOUT;
 
-		preHeaterGather.put(this.subcribeService, this);
+		preHeaterGather.put(this.serviceName, this);
 	}
 
-	public static boolean finishPreConnection(SubcribeService subcribeService) {
+	public static boolean finishPreConnection(String serviceName) {
 
-		logger.info("serivceName {} link to provider 预热成功~", subcribeService);
+		logger.info("serivceName {} link to provider 预热成功~", serviceName);
 
-		ConectionPreHeater conectionPreHeater = preHeaterGather.remove(subcribeService);
+		ConectionPreHeater conectionPreHeater = preHeaterGather.remove(serviceName);
 
 		if (conectionPreHeater == null) {
-			logger.warn("A timeout serviceName {} link provider.", subcribeService);
+			logger.warn("A timeout serviceName {} link provider.", serviceName);
 			return false;
 		}
-		conectionPreHeater.doFinishPreHeat(subcribeService);
+		conectionPreHeater.doFinishPreHeat(serviceName);
 		return true;
 	}
 
-	private void doFinishPreHeat(SubcribeService subcribeService) {
+	private void doFinishPreHeat(String serviceName) {
 
 		this.readyState = new Object();
 

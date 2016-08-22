@@ -25,10 +25,6 @@ public class SubcribeResultCustomBody implements CommonCustomBody {
 		private String host;
 
 		private int port;
-		// 组别
-		private String group;
-		// 版本信息
-		private String version;
 		// 服务名
 		private String serviceProviderName;
 		// 是否该服务是VIP服务，如果该服务是VIP服务，走特定的channel，也可以有降级的服务
@@ -38,11 +34,9 @@ public class SubcribeResultCustomBody implements CommonCustomBody {
 		// 建议连接数 hashCode()与equals()不把connCount计算在内
 		private volatile int connCount;
 
-		public ServiceInfo(String host, int port, String group, String version, String serviceProviderName, boolean isVIPService, int weight, int connCount) {
+		public ServiceInfo(String host, int port, String serviceProviderName, boolean isVIPService, int weight, int connCount) {
 			this.host = host;
 			this.port = port;
-			this.group = group;
-			this.version = version;
 			this.serviceProviderName = serviceProviderName;
 			this.isVIPService = isVIPService;
 			this.weight = weight;
@@ -63,22 +57,6 @@ public class SubcribeResultCustomBody implements CommonCustomBody {
 
 		public void setPort(int port) {
 			this.port = port;
-		}
-
-		public String getGroup() {
-			return group;
-		}
-
-		public void setGroup(String group) {
-			this.group = group;
-		}
-
-		public String getVersion() {
-			return version;
-		}
-
-		public void setVersion(String version) {
-			this.version = version;
 		}
 
 		public String getServiceProviderName() {
@@ -115,8 +93,8 @@ public class SubcribeResultCustomBody implements CommonCustomBody {
 
 		@Override
 		public String toString() {
-			return "ServiceInfo [host=" + host + ", port=" + port + ", group=" + group + ", version=" + version + ", serviceProviderName="
-					+ serviceProviderName + ", isVIPService=" + isVIPService + ", weight=" + weight + ", connCount=" + connCount + "]";
+			return "ServiceInfo [host=" + host + ", port=" + port + ", serviceProviderName=" + serviceProviderName + ", isVIPService=" + isVIPService
+					+ ", weight=" + weight + ", connCount=" + connCount + "]";
 		}
 		
 	}

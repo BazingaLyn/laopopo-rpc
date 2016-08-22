@@ -13,7 +13,7 @@ public class RegisterMeta {
 
 	private Address address = new Address();
 
-	private ServiceMeta serviceMeta = new ServiceMeta();
+	private String serviceName;
 	
 	// 是否该服务是VIP服务，如果该服务是VIP服务，走特定的channel，也可以有降级的服务
 	private boolean isVIPService;
@@ -32,10 +32,10 @@ public class RegisterMeta {
 	
 	private boolean hasDegradeService = false;
 	
-	public RegisterMeta(Address address, ServiceMeta serviceMeta, boolean isVIPService, boolean isSupportDegradeService, String degradeServicePath,
+	public RegisterMeta(Address address, String serviceName,boolean isVIPService, boolean isSupportDegradeService, String degradeServicePath,
 			String degradeServiceDesc, int weight, int connCount) {
 		this.address = address;
-		this.serviceMeta = serviceMeta;
+		this.serviceName = serviceName;
 		this.isVIPService = isVIPService;
 		this.isSupportDegradeService = isSupportDegradeService;
 		this.degradeServicePath = degradeServicePath;
@@ -50,14 +50,6 @@ public class RegisterMeta {
 
 	public void setAddress(Address address) {
 		this.address = address;
-	}
-
-	public ServiceMeta getServiceMeta() {
-		return serviceMeta;
-	}
-
-	public void setServiceMeta(ServiceMeta serviceMeta) {
-		this.serviceMeta = serviceMeta;
 	}
 
 	public int getWeight() {
@@ -123,6 +115,16 @@ public class RegisterMeta {
 	public void setDegradeServiceDesc(String degradeServiceDesc) {
 		this.degradeServiceDesc = degradeServiceDesc;
 	}
+
+	public String getServiceName() {
+		return serviceName;
+	}
+
+	public void setServiceName(String serviceName) {
+		this.serviceName = serviceName;
+	}
+
+
 
 	public static class Address {
 		// 地址
@@ -190,14 +192,14 @@ public class RegisterMeta {
 		RegisterMeta that = (RegisterMeta) obj;
 
 		return !(address != null ? !address.equals(that.address) : that.address != null)
-				&& !(serviceMeta != null ? !serviceMeta.equals(that.serviceMeta) : that.serviceMeta != null);
+				&& !(serviceName != null ? !serviceName.equals(that.serviceName) : that.serviceName != null);
 
 	}
 
 	@Override
 	public int hashCode() {
 		int result = address != null ? address.hashCode() : 0;
-		result = 31 * result + (serviceMeta != null ? serviceMeta.hashCode() : 0);
+		result = 31 * result + (serviceName != null ? serviceName.hashCode() : 0);
 		return result;
 	}
 
@@ -205,11 +207,8 @@ public class RegisterMeta {
 
 		Address address = new Address(publishServiceCustomBody.getHost(), 
 									  publishServiceCustomBody.getPort());
-		ServiceMeta meta = new ServiceMeta(publishServiceCustomBody.getGroup(), //group
-										   publishServiceCustomBody.getVersion(), 
-										   publishServiceCustomBody.getServiceProviderName());
 		
-		RegisterMeta registerMeta = new RegisterMeta(address,meta,
+		RegisterMeta registerMeta = new RegisterMeta(address,publishServiceCustomBody.getServiceProviderName(),
 				publishServiceCustomBody.isVIPService(),
 				publishServiceCustomBody.isSupportDegradeService(),
 				publishServiceCustomBody.getDegradeServicePath(),

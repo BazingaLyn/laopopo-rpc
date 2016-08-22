@@ -16,7 +16,6 @@ import org.laopopo.common.transport.body.SubcribeResultCustomBody;
 import org.laopopo.common.transport.body.SubcribeResultCustomBody.ServiceInfo;
 import org.laopopo.registry.model.RegisterMeta;
 import org.laopopo.registry.model.RegisterMeta.Address;
-import org.laopopo.registry.model.ServiceMeta;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +33,7 @@ public class RegistryConsumerManager {
 
 	private DefaultRegistryServer defaultRegistryServer;
 
-	private static final AttributeKey<ConcurrentSet<ServiceMeta>> S_SUBSCRIBE_KEY = AttributeKey.valueOf("server.subscribed");
+	private static final AttributeKey<ConcurrentSet<String>> S_SUBSCRIBE_KEY = AttributeKey.valueOf("server.subscribed");
 
 	private final ChannelGroup subscriberChannels = new DefaultChannelGroup("subscribers", GlobalEventExecutor.INSTANCE);
 
@@ -77,7 +76,7 @@ public class RegistryConsumerManager {
 			@Override
 			public boolean matches(Channel channel) {
 				//
-				boolean doSend = isChannelSubscribeOnServiceMeta(meta.getServiceMeta(), channel);
+				boolean doSend = isChannelSubscribeOnServiceMeta(meta.getServiceName(), channel);
 				// TODO
 				// if (doSend) {
 				// MessageNonAck msgNonAck = new
@@ -107,7 +106,7 @@ public class RegistryConsumerManager {
 			@Override
 			public boolean matches(Channel channel) {
 				//
-				boolean doSend = isChannelSubscribeOnServiceMeta(meta.getServiceMeta(), channel);
+				boolean doSend = isChannelSubscribeOnServiceMeta(meta.getServiceName(), channel);
 				// TODO
 				// if (doSend) {
 				// MessageNonAck msgNonAck = new
@@ -129,10 +128,10 @@ public class RegistryConsumerManager {
 	 * @param channel
 	 * @return
 	 */
-	private boolean isChannelSubscribeOnServiceMeta(ServiceMeta serviceMeta, Channel channel) {
-		ConcurrentSet<ServiceMeta> serviceMetaSet = channel.attr(S_SUBSCRIBE_KEY).get();
+	private boolean isChannelSubscribeOnServiceMeta(String serviceName, Channel channel) {
+		ConcurrentSet<String> serviceMetaSet = channel.attr(S_SUBSCRIBE_KEY).get();
 
-		return serviceMetaSet != null && serviceMetaSet.contains(serviceMeta);
+		return serviceMetaSet != null && serviceMetaSet.contains(serviceName);
 	}
 	
 	/**
@@ -145,9 +144,7 @@ public class RegistryConsumerManager {
 		
 		ServiceInfo  info = new ServiceInfo(meta.getAddress().getHost(), // 服务的提供地址
 				meta.getAddress().getPort(), // 服务提供端口
-				meta.getServiceMeta().getGroup(), // 服务的组别
-				meta.getServiceMeta().getVersion(), // 服务的版本
-				meta.getServiceMeta().getServiceProviderName(), // 服务名
+				meta.getServiceName(),
 				meta.isVIPService(),
 				meta.getWeight(),
 				meta.getConnCount()); // 是否为VIP服务 如果是，consumer调用的时候就会port-2 连接调用
