@@ -92,7 +92,7 @@ public class RegistryConsumerManager {
 	}
 
 
-	public void notifyMacthedSubscriberOver(final RegisterMeta meta) {
+	public void notifyMacthedSubscriberCancel(final RegisterMeta meta) {
 		
 		// 构建订阅通知的主体传输对象
 		SubcribeResultCustomBody subcribeResultCustomBody = new SubcribeResultCustomBody();
@@ -148,7 +148,9 @@ public class RegistryConsumerManager {
 				meta.getServiceMeta().getGroup(), // 服务的组别
 				meta.getServiceMeta().getVersion(), // 服务的版本
 				meta.getServiceMeta().getServiceProviderName(), // 服务名
-				meta.isVIPService()); // 是否为VIP服务 如果是，consumer调用的时候就会port-2 连接调用
+				meta.isVIPService(),
+				meta.getWeight(),
+				meta.getConnCount()); // 是否为VIP服务 如果是，consumer调用的时候就会port-2 连接调用
 		serviceInfos.add(info);
 		subcribeResultCustomBody.setServiceInfos(serviceInfos);
 	}

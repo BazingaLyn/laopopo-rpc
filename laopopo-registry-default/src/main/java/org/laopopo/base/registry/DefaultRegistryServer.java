@@ -7,7 +7,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import org.laopopo.common.utils.NamedThreadFactory;
 import org.laopopo.registry.RegistryServer;
 import org.laopopo.remoting.netty.NettyClientConfig;
-import org.laopopo.remoting.netty.NettyRemotingClient;
 import org.laopopo.remoting.netty.NettyRemotingServer;
 import org.laopopo.remoting.netty.NettyServerConfig;
 
@@ -31,13 +30,8 @@ public class DefaultRegistryServer implements RegistryServer {
 	//netty Server的一些配置文件
     private final NettyServerConfig nettyServerConfig;
     
-    private final NettyClientConfig nettyClientConfig;
-	
     //注册中心的netty server端
 	private NettyRemotingServer remotingServer;
-	
-	//注册中心连接monitor的客户端
-	private NettyRemotingClient nettyRemotingClient;
 	
 	private RegistryConsumerManager consumerManager;
 	
@@ -55,9 +49,8 @@ public class DefaultRegistryServer implements RegistryServer {
      * @param nettyServerConfig 注册中心的netty的配置文件 至少需要配置listenPort
      * @param nettyClientConfig 注册中心连接Monitor端的netty配置文件，至少需要配置defaultAddress值 这边monitor是单实例，所以address一个就好
      */
-    public DefaultRegistryServer(NettyServerConfig nettyServerConfig,NettyClientConfig nettyClientConfig) {
+    public DefaultRegistryServer(NettyServerConfig nettyServerConfig) {
     	this.nettyServerConfig = nettyServerConfig;
-    	this.nettyClientConfig = nettyClientConfig;
     	consumerManager = new RegistryConsumerManager(this);
     	providerManager = new RegistryProviderManager(this);
     	initialize();
@@ -67,7 +60,6 @@ public class DefaultRegistryServer implements RegistryServer {
 		
 		 this.remotingServer = new NettyRemotingServer(this.nettyServerConfig);
 		 
-		 this.nettyRemotingClient = new NettyRemotingClient(nettyClientConfig);
 		 
 		 this.remotingExecutor =
 	                Executors.newFixedThreadPool(nettyServerConfig.getServerWorkerThreads(), new NamedThreadFactory("RegistryCenterExecutorThread_"));
@@ -88,7 +80,6 @@ public class DefaultRegistryServer implements RegistryServer {
 	@Override
 	public void start() {
 		this.remotingServer.start();
-		this.nettyRemotingClient.start();
 	}
 
 	public RegistryConsumerManager getConsumerManager() {

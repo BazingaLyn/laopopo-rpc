@@ -1,11 +1,13 @@
-package org.laopopo.client.comsumer;
+package org.laopopo.client.consumer;
 
 import org.laopopo.remoting.netty.NettyClientConfig;
 
 public class ConsumerClient extends DefaultConsumer {
 
-	public ConsumerClient(NettyClientConfig registryClientConfig, NettyClientConfig providerClientConfig) {
-		super(registryClientConfig, providerClientConfig);
+	 
+
+	public ConsumerClient(NettyClientConfig registryClientConfig, NettyClientConfig providerClientConfig, ConsumerConfig consumerConfig) {
+		super(registryClientConfig, providerClientConfig, consumerConfig);
 	}
 
 	@Override

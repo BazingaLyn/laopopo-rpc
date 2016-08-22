@@ -1,10 +1,7 @@
 package org.laopopo.client.provider;
 
-import java.util.List;
-
 import org.laopopo.client.provider.flow.control.FlowController;
 import org.laopopo.common.exception.remoting.RemotingException;
-import org.laopopo.remoting.model.RemotingTransporter;
 
 /**
  * 
@@ -20,15 +17,15 @@ public interface Provider {
 	
 	/**
 	 * 连接到注册中心 address : host:port,host:port
-	 * @param address
+	 * @param address 注册中心的地址
 	 * @throws RemotingException 
 	 * @throws InterruptedException 
 	 */
 	void publishedAndStartProvider(String address) throws InterruptedException, RemotingException;
 	
 	/**
-	 * 
-	 * @param listeningAddress
+	 * 在某个ip和端口上提供哪些服务
+	 * @param listeningAddress 供consumer连接的地址号
 	 * @param controller
 	 * @param obj
 	 * @return

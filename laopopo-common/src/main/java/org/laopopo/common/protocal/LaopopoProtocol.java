@@ -25,10 +25,15 @@ public class LaopopoProtocol {
   	
   	public static final byte SUBCRIBE_SERVICE_CANCEL = 67;
   	
-  	
   	public static final byte PUBLISH_CANCEL_SERVICE = 68;
   	
+  	//consumer发送给registry注册服务
   	public static final byte SUBSCRIBE_SERVICE = 69;
+  	
+  	//审核服务
+  	public static final byte REVIEW_SERVICE = 70;
+  	
+  	public static final byte OFFLINE_ADDRESS = 71;
     
     //心跳
     public static final byte HEARTBEAT = 127;

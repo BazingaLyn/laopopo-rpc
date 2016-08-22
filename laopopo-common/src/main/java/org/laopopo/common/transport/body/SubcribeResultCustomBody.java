@@ -33,16 +33,21 @@ public class SubcribeResultCustomBody implements CommonCustomBody {
 		private String serviceProviderName;
 		// 是否该服务是VIP服务，如果该服务是VIP服务，走特定的channel，也可以有降级的服务
 		private boolean isVIPService;
-		
-		public ServiceInfo(String host, int port, String group, String version, String serviceProviderName, boolean isVIPService) {
+		//权重
+		private volatile int weight;
+		// 建议连接数 hashCode()与equals()不把connCount计算在内
+		private volatile int connCount;
+
+		public ServiceInfo(String host, int port, String group, String version, String serviceProviderName, boolean isVIPService, int weight, int connCount) {
 			this.host = host;
 			this.port = port;
 			this.group = group;
 			this.version = version;
 			this.serviceProviderName = serviceProviderName;
 			this.isVIPService = isVIPService;
+			this.weight = weight;
+			this.connCount = connCount;
 		}
-
 
 		public String getHost() {
 			return host;
@@ -92,12 +97,30 @@ public class SubcribeResultCustomBody implements CommonCustomBody {
 			this.isVIPService = isVIPService;
 		}
 
+		public int getWeight() {
+			return weight;
+		}
+
+		public void setWeight(int weight) {
+			this.weight = weight;
+		}
+
+		public int getConnCount() {
+			return connCount;
+		}
+
+		public void setConnCount(int connCount) {
+			this.connCount = connCount;
+		}
+
 		@Override
 		public String toString() {
-			return "SubcribeResultCustomBody [host=" + host + ", port=" + port + ", group=" + group + ", version=" + version + ", serviceProviderName="
-					+ serviceProviderName + ", isVIPService=" + isVIPService + "]";
+			return "ServiceInfo [host=" + host + ", port=" + port + ", group=" + group + ", version=" + version + ", serviceProviderName="
+					+ serviceProviderName + ", isVIPService=" + isVIPService + ", weight=" + weight + ", connCount=" + connCount + "]";
 		}
+		
 	}
+	
 
 	public List<ServiceInfo> getServiceInfos() {
 		return serviceInfos;
@@ -106,6 +129,10 @@ public class SubcribeResultCustomBody implements CommonCustomBody {
 	public void setServiceInfos(List<ServiceInfo> serviceInfos) {
 		this.serviceInfos = serviceInfos;
 	}
-	
+
+	@Override
+	public String toString() {
+		return "SubcribeResultCustomBody [serviceInfos=" + serviceInfos + "]";
+	}
 
 }

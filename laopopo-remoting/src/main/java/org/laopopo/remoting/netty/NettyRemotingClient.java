@@ -86,6 +86,8 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 	private RPCHook rpcHook;
 
 	private final ConcurrentHashMap<String /* addr */, ChannelWrapper> channelTables = new ConcurrentHashMap<String, ChannelWrapper>();
+	
+	private boolean isReconnect = true;
 
 	public NettyRemotingClient(NettyClientConfig nettyClientConfig) {
 		this.nettyClientConfig = nettyClientConfig;
@@ -138,7 +140,7 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 						idleStateTrigger, new NettyClientHandler() };
 			}
 		};
-		watchdog.setReconnect(true);
+		watchdog.setReconnect(isReconnect);
 
 		bootstrap.handler(new ChannelInitializer<SocketChannel>() {
 			@Override
@@ -190,7 +192,7 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 		return this.createChannel(addr);
 	}
 
-	private Channel createChannel(String addr) throws InterruptedException {
+	public Channel createChannel(String addr) throws InterruptedException {
 
 		ChannelWrapper cw = this.channelTables.get(addr);
 		if (cw != null && cw.isOK()) {
@@ -428,6 +430,15 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 		public ChannelFuture getChannelFuture() {
 			return channelFuture;
 		}
+	}
+	
+	public Bootstrap getBootstrap() {
+		return bootstrap;
+	}
+
+	@Override
+	public void setreconnect(boolean isReconnect) {
+		this.isReconnect = isReconnect;
 	}
 
 }

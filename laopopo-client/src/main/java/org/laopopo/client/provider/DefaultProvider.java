@@ -56,7 +56,7 @@ public class DefaultProvider implements Provider {
 	}
 
 	private void initialize() {
-
+		
 		this.nettyRemotingServer = new NettyRemotingServer(this.serverConfig);
 		this.nettyRemotingClient = new NettyRemotingClient(this.clientConfig);
 
@@ -73,7 +73,6 @@ public class DefaultProvider implements Provider {
 	private void registerProcessor() {
 		this.nettyRemotingServer.registerDefaultProcessor(new DefaultProviderProcessor(this), this.remotingExecutor);
 		this.nettyRemotingServer.registerChannelInactiveProcessor(new DefaultProviderChannelInactiveProcessor(this), remotingChannelInactiveExecutor);
-//	    this.nettyRemotingClient.registerProcessor(Laopopo, processor, executor);
 	}
 
 
@@ -84,6 +83,9 @@ public class DefaultProvider implements Provider {
 
 	@Override
 	public void publishServiceAndListening(String listeningAddress,FlowController controller, Object... obj) {
+		if(logger.isDebugEnabled()){
+			logger.debug("[{}] accept consumer request",listeningAddress);
+		}
 		this.publishRemotingTransporters =  providerController.getLocalServerWrapperManager().wrapperRegisterInfo(listeningAddress,controller,obj);
 	}
 
@@ -115,5 +117,10 @@ public class DefaultProvider implements Provider {
 	public void setProviderController(ProviderController providerController) {
 		this.providerController = providerController;
 	}
+
+	public ScheduledExecutorService getScheduledExecutorService() {
+		return scheduledExecutorService;
+	}
+	
 	
 }

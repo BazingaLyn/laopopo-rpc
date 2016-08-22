@@ -47,5 +47,8 @@ public interface RemotingClient extends BaseRemotingService {
 	 * @return
 	 */
 	boolean isChannelWriteable(final String addr);
+	
+	
+	void setreconnect(boolean isReconnect);
 
 }

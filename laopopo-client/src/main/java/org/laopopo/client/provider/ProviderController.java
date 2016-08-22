@@ -12,8 +12,10 @@ public class ProviderController {
 	
 	private DefaultProvider defaultProvider;
 	
+	//provider与注册中心的所有逻辑控制器
 	private RegistryController registryController;
 	
+	//provider与monitor端通信的控制器
 	private ProviderMonitorController providerMonitorController;
 	
 	//本地服务编织服务管理

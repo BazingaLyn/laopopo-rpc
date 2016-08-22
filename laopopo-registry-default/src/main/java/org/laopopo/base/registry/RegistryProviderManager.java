@@ -170,32 +170,6 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		return responseTransporter;
 	}
 	
-	private void buildSubcribeResultCustomBody(ConcurrentMap<Address, RegisterMeta> maps, SubcribeResultCustomBody subcribeResultCustomBody) {
-		Collection<RegisterMeta> values = maps.values();
-		if(values != null && values.size() > 0){
-			List<ServiceInfo> serviceInfos = new ArrayList<ServiceInfo>();
-			for(RegisterMeta meta : values){
-				ServiceInfo serviceInfo = new ServiceInfo(meta.getAddress().getHost(), meta.getAddress().getPort(), meta.getServiceMeta().getGroup(),
-						meta.getServiceMeta().getVersion(), meta.getServiceMeta().getServiceProviderName(), meta.isVIPService());
-				serviceInfos.add(serviceInfo);
-			}
-			subcribeResultCustomBody.setServiceInfos(serviceInfos);
-		}
-	}
-
-	private void attachSubscribeEventOnChannel(ServiceMeta serviceMeta, Channel channel) {
-		Attribute<ConcurrentSet<ServiceMeta>> attr = channel.attr(S_SUBSCRIBE_KEY);
-        ConcurrentSet<ServiceMeta> serviceMetaSet = attr.get();
-        if (serviceMetaSet == null) {
-            ConcurrentSet<ServiceMeta> newServiceMetaSet = new ConcurrentSet<ServiceMeta>();
-            serviceMetaSet = attr.setIfAbsent(newServiceMetaSet);
-            if (serviceMetaSet == null) {
-                serviceMetaSet = newServiceMetaSet;
-            }
-        }
-        serviceMetaSet.add(serviceMeta);
-	}
-
 	/***
 	 * 服务下线的接口
 	 * @param meta
@@ -223,9 +197,24 @@ public class RegistryProviderManager implements RegistryProviderServer {
             if (data != null) {
                 this.getServiceMeta(address).remove(serviceMeta);
                 
-                this.defaultRegistryServer.getConsumerManager().notifyMacthedSubscriberOver(meta);
+                this.defaultRegistryServer.getConsumerManager().notifyMacthedSubscriberCancel(meta);
             }
 		}
+	}
+	
+	/**
+	 * 审核服务
+	 * @param request
+	 * @param channel
+	 * @return
+	 */
+	public RemotingTransporter handleReview(RemotingTransporter request, Channel channel) {
+		
+		if (logger.isDebugEnabled()) {
+			logger.info("review service {} on channel{}.", request, channel);
+		}
+		
+		return null;
 	}
 
 	
@@ -294,6 +283,39 @@ public class RegistryProviderManager implements RegistryProviderServer {
             }
         }
         return maps;
+	}
+	
+	
+	private void buildSubcribeResultCustomBody(ConcurrentMap<Address, RegisterMeta> maps, SubcribeResultCustomBody subcribeResultCustomBody) {
+		
+		Collection<RegisterMeta> values = maps.values();
+		
+		if(values != null && values.size() > 0){
+			List<ServiceInfo> serviceInfos = new ArrayList<ServiceInfo>();
+			for(RegisterMeta meta : values){
+				//判断是否人工审核过，审核过的情况下，组装给consumer的响应主体，返回个consumer
+				if(meta.getIsReviewed() == ServiceReviewState.PASS_REVIEW){
+					
+					ServiceInfo serviceInfo = new ServiceInfo(meta.getAddress().getHost(), meta.getAddress().getPort(), meta.getServiceMeta().getGroup(),
+							meta.getServiceMeta().getVersion(), meta.getServiceMeta().getServiceProviderName(), meta.isVIPService(),meta.getWeight(),meta.getConnCount());
+					serviceInfos.add(serviceInfo);
+				}
+			}
+			subcribeResultCustomBody.setServiceInfos(serviceInfos);
+		}
+	}
+
+	private void attachSubscribeEventOnChannel(ServiceMeta serviceMeta, Channel channel) {
+		Attribute<ConcurrentSet<ServiceMeta>> attr = channel.attr(S_SUBSCRIBE_KEY);
+        ConcurrentSet<ServiceMeta> serviceMetaSet = attr.get();
+        if (serviceMetaSet == null) {
+            ConcurrentSet<ServiceMeta> newServiceMetaSet = new ConcurrentSet<ServiceMeta>();
+            serviceMetaSet = attr.setIfAbsent(newServiceMetaSet);
+            if (serviceMetaSet == null) {
+                serviceMetaSet = newServiceMetaSet;
+            }
+        }
+        serviceMetaSet.add(serviceMeta);
 	}
 
 

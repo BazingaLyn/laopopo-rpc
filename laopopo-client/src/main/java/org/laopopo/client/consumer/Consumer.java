@@ -1,6 +1,6 @@
-package org.laopopo.client.comsumer;
+package org.laopopo.client.consumer;
 
-import org.laopopo.client.comsumer.ConsumerRegistry.SubcribeService;
+import org.laopopo.client.consumer.ConsumerRegistry.SubcribeService;
 
 
 public interface Consumer {
