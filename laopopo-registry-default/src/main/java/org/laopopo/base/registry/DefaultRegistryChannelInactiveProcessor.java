@@ -31,7 +31,7 @@ public class DefaultRegistryChannelInactiveProcessor implements NettyChannelInac
 	}
 
 	@Override
-	public void processChannelInactive(ChannelHandlerContext ctx) throws Exception {
+	public void processChannelInactive(ChannelHandlerContext ctx) {
 		//获取到当前的channel，此时的channel应该是打过记号的
 		Channel channel = ctx.channel();
 		

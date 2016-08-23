@@ -1,5 +1,6 @@
 package org.laopopo.client.provider;
 
+import static org.laopopo.common.protocal.LaopopoProtocol.RPC_REQUEST;
 import io.netty.channel.ChannelHandlerContext;
 
 import org.laopopo.remoting.ConnectionUtils;
@@ -15,13 +16,13 @@ import org.slf4j.LoggerFactory;
  * @time
  * @modifytime
  */
-public class DefaultProviderProcessor implements NettyRequestProcessor {
+public class DefaultProviderRPCProcessor implements NettyRequestProcessor {
 	
-	private static final Logger logger = LoggerFactory.getLogger(DefaultProviderProcessor.class);
+	private static final Logger logger = LoggerFactory.getLogger(DefaultProviderRPCProcessor.class);
 	
 	private DefaultProvider defaultProvider;
 
-	public DefaultProviderProcessor(DefaultProvider defaultProvider) {
+	public DefaultProviderRPCProcessor(DefaultProvider defaultProvider) {
 		this.defaultProvider = defaultProvider;
 	}
 
@@ -35,7 +36,12 @@ public class DefaultProviderProcessor implements NettyRequestProcessor {
                 request);
         }
 		
-		
+		switch (request.getCode()) {
+		   case RPC_REQUEST:
+			   //这边稍微特殊处理一下，可以返回null,我们不需要叫外层代码帮我们writeAndFlush 发出请求，因为我们持有channel，这样做rpc可以更加灵活一点
+			    this.defaultProvider.handlerRPCRequest(request,ctx.channel());
+			    break;
+		}
 		return null;
 	}
 

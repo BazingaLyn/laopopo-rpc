@@ -10,8 +10,7 @@ import io.netty.channel.ChannelHandlerContext;
  * @modifytime
  */
 public interface NettyChannelInactiveProcessor {
-
 	
-	void processChannelInactive(ChannelHandlerContext ctx)
-            throws Exception;
+	
+	void processChannelInactive(ChannelHandlerContext ctx);
 }

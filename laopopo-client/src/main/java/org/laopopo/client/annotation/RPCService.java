@@ -15,10 +15,6 @@ public @interface RPCService {
 
 	public int weight() default 50;
 
-	public String group() default "bazinga";
-	
-	public String version() default "1.0.0";
-
 	public String responsibilityName() default "system";
 
 	public int connCount() default 1;

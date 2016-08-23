@@ -15,10 +15,6 @@ public class PublishServiceCustomBody implements CommonCustomBody {
 	private String host;
 	// 服务的端口
 	private int port;
-	// 组别
-	private String group;
-	// 版本信息
-	private String version;
 	// 服务名
 	private String serviceProviderName;
 	// 是否该服务是VIP服务，如果该服务是VIP服务，走特定的channel，也可以有降级的服务
@@ -52,22 +48,6 @@ public class PublishServiceCustomBody implements CommonCustomBody {
 
 	public void setPort(int port) {
 		this.port = port;
-	}
-
-	public String getGroup() {
-		return group;
-	}
-
-	public void setGroup(String group) {
-		this.group = group;
-	}
-
-	public String getVersion() {
-		return version;
-	}
-
-	public void setVersion(String version) {
-		this.version = version;
 	}
 
 	public String getServiceProviderName() {
@@ -128,9 +108,10 @@ public class PublishServiceCustomBody implements CommonCustomBody {
 
 	@Override
 	public String toString() {
-		return "PublishServiceCustomBody [host=" + host + ", port=" + port + ", group=" + group + ", version=" + version + ", serviceProviderName="
-				+ serviceProviderName + ", isVIPService=" + isVIPService + ", isSupportDegradeService=" + isSupportDegradeService + ", degradeServicePath="
-				+ degradeServicePath + ", degradeServiceDesc=" + degradeServiceDesc + ", weight=" + weight + ", connCount=" + connCount + "]";
+		return "PublishServiceCustomBody [host=" + host + ", port=" + port + ", serviceProviderName=" + serviceProviderName + ", isVIPService=" + isVIPService
+				+ ", isSupportDegradeService=" + isSupportDegradeService + ", degradeServicePath=" + degradeServicePath + ", degradeServiceDesc="
+				+ degradeServiceDesc + ", weight=" + weight + ", connCount=" + connCount + "]";
 	}
+ 
 
 }

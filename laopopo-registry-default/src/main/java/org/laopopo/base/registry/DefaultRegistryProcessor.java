@@ -34,6 +34,7 @@ public class DefaultRegistryProcessor implements NettyRequestProcessor {
 		
 		switch (request.getCode()) {
 		   case PUBLISH_SERVICE:
+			   //要保持幂等性，同一个实例重复发布同一个服务的时候对于注册中心来说是无影响的
 			   return this.defaultRegistryServer.getProviderManager().handlerRegister(request,ctx.channel());
 		   case PUBLISH_CANCEL_SERVICE:
 			   return this.defaultRegistryServer.getProviderManager().handlerRegisterCancel(request,ctx.channel());

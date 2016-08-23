@@ -88,10 +88,15 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		ConcurrentMap<Address, RegisterMeta> maps = this.getRegisterMeta(serviceMeta);
 		
 		synchronized (globalRegisterInfoMap) {
-			//将当前的地址也put进去，如果返回是null，说明是第一次注册，则将其该地址的服务列表中加入该服务
-			if (maps.putIfAbsent(meta.getAddress(), meta) == null) {
-                this.getServiceMeta(meta.getAddress()).add(serviceMeta);
+			
+			RegisterMeta existRegiserMeta = maps.get(meta.getAddress());
+			
+			if(null == existRegiserMeta){
+				existRegiserMeta = meta;
+				maps.put(meta.getAddress(), existRegiserMeta);
 			}
+			
+			this.getServiceMeta(meta.getAddress()).add(serviceMeta);
 			
 			//判断provider发送的信息已经被成功的存储的情况下，则告之服务注册成功
 			ackCustomBody.setDesc(ACK_PUBLISH_SUCCESS);
@@ -196,6 +201,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
             if (data != null) {
                 this.getServiceMeta(address).remove(serviceMeta);
                 
+                if(data.getIsReviewed() == ServiceReviewState.PASS_REVIEW)
                 this.defaultRegistryServer.getConsumerManager().notifyMacthedSubscriberCancel(meta);
             }
 		}
@@ -314,6 +320,14 @@ public class RegistryProviderManager implements RegistryProviderServer {
             }
         }
         serviceMetaSet.add(serviceMeta);
+	}
+
+	public ConcurrentMap<String, ConcurrentMap<Address, RegisterMeta>> getGlobalRegisterInfoMap() {
+		return globalRegisterInfoMap;
+	}
+
+	public ConcurrentMap<Address, ConcurrentSet<String>> getGlobalServiceMetaMap() {
+		return globalServiceMetaMap;
 	}
 
 

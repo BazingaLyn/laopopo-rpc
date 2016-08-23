@@ -13,13 +13,16 @@ public class ProviderTest {
 	public static void main(String[] args) throws InterruptedException, RemotingException {
 		
 		DefaultProvider defaultProvider = new DefaultProvider(new NettyClientConfig(), new NettyServerConfig());
-		defaultProvider.start();
+		
 		FlowController controller = new DefaultFlowController();
 		controller.setMaxTimes(1000);
 		
-		defaultProvider.publishServiceAndListening("127.0.0.1:8899", controller, new HelloSerivceImpl(),new ByeServiceImpl());
+		defaultProvider.globalController(controller) //全局限流器
+					   .registryAddress("127.0.0.1:18010") //注册中心的地址
+					   .serviceListenAddress("127.0.0.1:8899") //暴露服务的地址
+					   .publishService(new HelloSerivceImpl(),new ByeServiceImpl()) //暴露的服务
+					   .start(); //启动服务
 		
-		defaultProvider.publishedAndStartProvider("127.0.0.1:18010");
 	}
 	
 	public static class DefaultFlowController implements FlowController {

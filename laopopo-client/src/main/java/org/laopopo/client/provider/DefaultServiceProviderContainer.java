@@ -4,27 +4,65 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.laopopo.client.provider.model.ServiceWrapper;
+import org.laopopo.common.utils.Pair;
 
 /**
- * 提供者的服务注册容器
- * 每一个服务都有唯一的key来代表这个服务
+ * 
  * @author BazingaLyn
- * @copyright fjc
- * @time 2016年6月27日
+ * @description 服务容器
+ * @time 2016年8月23日
+ * @modifytime
  */
 public class DefaultServiceProviderContainer implements ServiceProviderContainer {
 	
 	
-	private final ConcurrentMap<String, ServiceWrapper> serviceProviders = new ConcurrentHashMap<String, ServiceWrapper>();
+	private final ConcurrentMap<String, Pair<CurrentServiceState, ServiceWrapper>> serviceProviders = new ConcurrentHashMap<String, Pair<CurrentServiceState, ServiceWrapper>>();
 
 	public void registerService(String uniqueKey, ServiceWrapper serviceWrapper) {
 		
-		serviceProviders.put(uniqueKey, serviceWrapper);
+		Pair<CurrentServiceState, ServiceWrapper> pair = new Pair<DefaultServiceProviderContainer.CurrentServiceState, ServiceWrapper>();
+		pair.setKey(new CurrentServiceState());
+		pair.setValue(serviceWrapper);
+		serviceProviders.put(uniqueKey, pair);
 		
 	}
 
-	public ServiceWrapper lookupService(String uniqueKey) {
+	public Pair<CurrentServiceState, ServiceWrapper> lookupService(String uniqueKey) {
 		return serviceProviders.get(uniqueKey);
+	}
+	
+	public static class CurrentServiceState {
+		
+		private boolean hasDegrade = false;
+		
+		private boolean hasLimitStream = true;
+		
+		private boolean isVipService = false;
+
+		public boolean isHasDegrade() {
+			return hasDegrade;
+		}
+
+		public void setHasDegrade(boolean hasDegrade) {
+			this.hasDegrade = hasDegrade;
+		}
+
+		public boolean isHasLimitStream() {
+			return hasLimitStream;
+		}
+
+		public void setHasLimitStream(boolean hasLimitStream) {
+			this.hasLimitStream = hasLimitStream;
+		}
+
+		public boolean isVipService() {
+			return isVipService;
+		}
+
+		public void setVipService(boolean isVipService) {
+			this.isVipService = isVipService;
+		}
+		
 	}
 
 }

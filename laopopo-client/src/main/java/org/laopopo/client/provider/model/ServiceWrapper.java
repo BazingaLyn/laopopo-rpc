@@ -22,12 +22,6 @@ public class ServiceWrapper {
 	/**** 降级类  默认入参和方法名与原生类一样******/
 	private Object mockDegradeServiceProvider;
 
-	/****** 版本号 ********/
-	private String version;
-
-	/****** 提供该服务的组别 *****/
-	private String group;
-
 	/****** 服务名 *****/
 	private String serviceName;
 
@@ -57,13 +51,11 @@ public class ServiceWrapper {
 
 	private volatile FlowController flowController;
 
-	public ServiceWrapper(Object serviceProvider, Object mockDegradeServiceProvider, String version, String group, String serviceName,
+	public ServiceWrapper(Object serviceProvider, Object mockDegradeServiceProvider, String serviceName,
 			String responsiblityName, String methodName, List<Class<?>[]> paramters, boolean isSupportDegradeService, String degradeServicePath,
 			String degradeServiceDesc, int weight, int connCount,boolean isVIPService, FlowController flowController) {
 		this.serviceProvider = serviceProvider;
 		this.mockDegradeServiceProvider = mockDegradeServiceProvider;
-		this.version = version;
-		this.group = group;
 		this.serviceName = serviceName;
 		this.responsiblityName = responsiblityName;
 		this.methodName = methodName;
@@ -91,22 +83,6 @@ public class ServiceWrapper {
 
 	public void setMockDegradeServiceProvider(Object mockDegradeServiceProvider) {
 		this.mockDegradeServiceProvider = mockDegradeServiceProvider;
-	}
-
-	public String getVersion() {
-		return version;
-	}
-
-	public void setVersion(String version) {
-		this.version = version;
-	}
-
-	public String getGroup() {
-		return group;
-	}
-
-	public void setGroup(String group) {
-		this.group = group;
 	}
 
 	public String getServiceName() {
@@ -199,12 +175,11 @@ public class ServiceWrapper {
 
 	@Override
 	public String toString() {
-		return "ServiceWrapper [serviceProvider=" + serviceProvider + ", mockDegradeServiceProvider=" + mockDegradeServiceProvider + ", version=" + version
-				+ ", group=" + group + ", serviceName=" + serviceName + ", responsiblityName=" + responsiblityName + ", methodName=" + methodName
-				+ ", paramters=" + paramters + ", isSupportDegradeService=" + isSupportDegradeService + ", degradeServicePath=" + degradeServicePath
-				+ ", degradeServiceDesc=" + degradeServiceDesc + ", isVIPService=" + isVIPService + ", weight=" + weight + ", connCount=" + connCount
-				+ ", flowController=" + flowController + "]";
+		return "ServiceWrapper [serviceProvider=" + serviceProvider + ", mockDegradeServiceProvider=" + mockDegradeServiceProvider + ", serviceName="
+				+ serviceName + ", responsiblityName=" + responsiblityName + ", methodName=" + methodName + ", paramters=" + paramters
+				+ ", isSupportDegradeService=" + isSupportDegradeService + ", degradeServicePath=" + degradeServicePath + ", degradeServiceDesc="
+				+ degradeServiceDesc + ", isVIPService=" + isVIPService + ", weight=" + weight + ", connCount=" + connCount + ", flowController="
+				+ flowController + "]";
 	}
-	 
 	
 }

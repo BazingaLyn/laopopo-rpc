@@ -10,7 +10,7 @@ public class DefaultMonitorChannelInactiveProcessor implements NettyChannelInact
 	}
 
 	@Override
-	public void processChannelInactive(ChannelHandlerContext ctx) throws Exception {
+	public void processChannelInactive(ChannelHandlerContext ctx) {
 		
 	}
 

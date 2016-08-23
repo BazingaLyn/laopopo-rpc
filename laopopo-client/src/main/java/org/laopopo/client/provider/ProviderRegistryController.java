@@ -1,5 +1,9 @@
 package org.laopopo.client.provider;
 
+import io.netty.channel.Channel;
+
+import org.laopopo.remoting.model.RemotingTransporter;
+
 
 /**
  * 
@@ -8,7 +12,7 @@ package org.laopopo.client.provider;
  * @time 2016年8月16日
  * @modifytime
  */
-public class ProviderController {
+public class ProviderRegistryController {
 	
 	private DefaultProvider defaultProvider;
 	
@@ -21,9 +25,9 @@ public class ProviderController {
 	//本地服务编织服务管理
 	private LocalServerWrapperManager localServerWrapperManager;
 	
-	private final ServiceProviderContainer providerContainer	;
+	private final ServiceProviderContainer providerContainer;
 	
-	public ProviderController(DefaultProvider defaultProvider) {
+	public ProviderRegistryController(DefaultProvider defaultProvider) {
 		this.defaultProvider = defaultProvider;
 		providerContainer = new DefaultServiceProviderContainer();
 		localServerWrapperManager = new LocalServerWrapperManager(this);
@@ -66,6 +70,12 @@ public class ProviderController {
 	public ServiceProviderContainer getProviderContainer() {
 		return providerContainer;
 	}
+
+	public RemotingTransporter handlerServiceDegrade(RemotingTransporter request, Channel channel) {
+		return null;
+	}
+	
+	
 	
 
 }

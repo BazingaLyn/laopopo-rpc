@@ -9,6 +9,7 @@ import io.netty.channel.ChannelHandlerContext;
 
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
 import org.laopopo.common.exception.remoting.RemotingSendRequestException;
@@ -46,7 +47,7 @@ public abstract class NettyRemotingBase {
 	//注入的某个requestCode对应的处理器放入到HashMap中，键值对一一匹配
 	protected final HashMap<Byte/* request code */, Pair<NettyRequestProcessor, ExecutorService>> processorTable =
             new HashMap<Byte, Pair<NettyRequestProcessor, ExecutorService>>(64);
-
+	
 	//远程端的调用具体实现
 	public RemotingTransporter invokeSyncImpl(final Channel channel,final RemotingTransporter request,final long timeoutMillis) throws RemotingTimeoutException, RemotingSendRequestException, InterruptedException{
 		
@@ -119,9 +120,26 @@ public abstract class NettyRemotingBase {
             }
         }
 	}
-	
-	protected void processChannelInactive(ChannelHandlerContext ctx) {
-		
+
+
+	protected void processChannelInactive(final ChannelHandlerContext ctx) {
+		final Pair<NettyChannelInactiveProcessor, ExecutorService> pair = this.defaultChannelInactiveProcessor;
+		if(pair != null){
+			
+			 Runnable run = new Runnable(){
+
+				@Override
+				public void run() {
+					pair.getKey().processChannelInactive(ctx);
+				}
+			 };
+			 try {
+				 pair.getValue().submit(run);
+			} catch (Exception e) {
+				logger.error("server is busy,[{}]",e.getMessage());
+			}
+				 
+		}
 	}
 	
 	protected void processRemotingRequest(final ChannelHandlerContext ctx, final RemotingTransporter remotingTransporter) {
@@ -145,15 +163,17 @@ public abstract class NettyRemotingBase {
                             rpcHook.doAfterResponse(ConnectionUtils.parseChannelRemoteAddr(ctx.channel()),
                             		remotingTransporter, response);
                         }
-                         ctx.writeAndFlush(response).addListener(new ChannelFutureListener() {
+                        if(null != response){
+                        	ctx.writeAndFlush(response).addListener(new ChannelFutureListener() {
 
-							@Override
-							public void operationComplete(ChannelFuture future) throws Exception {
-								if(!future.isSuccess()){
-									logger.error("fail send response ,exception is [{}]",future.cause().getMessage());
-								}
-							}
-                         });
+    							@Override
+    							public void operationComplete(ChannelFuture future) throws Exception {
+    								if(!future.isSuccess()){
+    									logger.error("fail send response ,exception is [{}]",future.cause().getMessage());
+    								}
+    							}
+                             });
+                        }
 					} catch (Exception e) {
 						logger.error("processor occur exception [{}]",e.getMessage());
 						final RemotingTransporter response = RemotingTransporter.newInstance(remotingTransporter.getOpaque(), LaopopoProtocol.RESPONSE_REMOTING, LaopopoProtocol.HANDLER_ERROR, null);

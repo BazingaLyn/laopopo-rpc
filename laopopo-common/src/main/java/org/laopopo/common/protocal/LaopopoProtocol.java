@@ -13,6 +13,8 @@ public class LaopopoProtocol {
     
     public static final byte RESPONSE_REMOTING = 2;
     
+    public static final byte RPC_REMOTING = 3;
+    
     public static final byte HANDLER_ERROR = -1;
     
     public static final byte HANDLER_BUSY = -2;
@@ -34,11 +36,19 @@ public class LaopopoProtocol {
   	public static final byte REVIEW_SERVICE = 70;
   	
   	public static final byte OFFLINE_ADDRESS = 71;
+  	
+  	public static final byte RPC_REQUEST = 72;
+  	
+  	public static final byte DEGRADE_SERVICE = 73;
+  	
+  	public static final byte RPC_RESPONSE = 74;
     
     //心跳
     public static final byte HEARTBEAT = 127;
     
     public static final byte ACK = 126;
+    
+    
 
     
 

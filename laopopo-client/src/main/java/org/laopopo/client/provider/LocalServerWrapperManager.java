@@ -37,9 +37,9 @@ public class LocalServerWrapperManager {
 
 	private static final Logger logger = LoggerFactory.getLogger(LocalServerWrapperManager.class);
 	
-	private ProviderController providerController;
+	private ProviderRegistryController providerController;
 
-	public LocalServerWrapperManager(ProviderController providerController) {
+	public LocalServerWrapperManager(ProviderRegistryController providerController) {
 		this.providerController = providerController;
 	}
 
@@ -67,6 +67,7 @@ public class LocalServerWrapperManager {
 				if(null != serviceWrappers  && !serviceWrappers.isEmpty()){
 					for(ServiceWrapper serviceWrapper : serviceWrappers){
 						
+						
 						String[] address = listeningAddress.split(":");
 						String host = address[0];
 						int port = Integer.parseInt(address[1]);
@@ -74,8 +75,6 @@ public class LocalServerWrapperManager {
 						commonCustomHeader.setConnCount(serviceWrapper.getConnCount());
 						commonCustomHeader.setDegradeServiceDesc(serviceWrapper.getDegradeServiceDesc());
 						commonCustomHeader.setDegradeServicePath(serviceWrapper.getDegradeServicePath());
-						commonCustomHeader.setGroup(serviceWrapper.getGroup());
-						commonCustomHeader.setVersion(serviceWrapper.getVersion());
 						commonCustomHeader.setHost(host);
 						commonCustomHeader.setPort(port);
 						commonCustomHeader.setServiceProviderName(serviceWrapper.getServiceName());
@@ -159,10 +158,6 @@ public class LocalServerWrapperManager {
 							
 							//服务名
 							String serviceName = StringUtil.isNullOrEmpty(rpcService.serviceName())?method.getName():rpcService.serviceName();
-							//版本号
-							String version = rpcService.version();
-							//方法组别
-							String group = rpcService.group();
 							//负责人
 							String responsiblityName = rpcService.responsibilityName();
 							//方法weight
@@ -202,8 +197,6 @@ public class LocalServerWrapperManager {
 							
 							ServiceWrapper serviceWrapper = new ServiceWrapper(serviceProvider,
 																			   mockDegradeServiceProvider,
-																			   version,
-																			   group,
 																			   serviceName,
 																			   responsiblityName,
 																			   methodName,

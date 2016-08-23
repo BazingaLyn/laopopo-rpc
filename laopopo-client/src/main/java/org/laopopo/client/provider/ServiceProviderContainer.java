@@ -1,6 +1,8 @@
 package org.laopopo.client.provider;
 
+import org.laopopo.client.provider.DefaultServiceProviderContainer.CurrentServiceState;
 import org.laopopo.client.provider.model.ServiceWrapper;
+import org.laopopo.common.utils.Pair;
 
 public interface ServiceProviderContainer {
 	
@@ -16,6 +18,6 @@ public interface ServiceProviderContainer {
 	 * @param uniqueKey 服务名
 	 * @return 服务编织类
 	 */
-    ServiceWrapper lookupService(String uniqueKey);
+	Pair<CurrentServiceState, ServiceWrapper> lookupService(String uniqueKey);
 
 }

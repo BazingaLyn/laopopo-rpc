@@ -202,6 +202,13 @@ public class RegisterMeta {
 		result = 31 * result + (serviceName != null ? serviceName.hashCode() : 0);
 		return result;
 	}
+	
+	@Override
+	public String toString() {
+		return "RegisterMeta [address=" + address + ", serviceName=" + serviceName + ", isVIPService=" + isVIPService + ", isSupportDegradeService="
+				+ isSupportDegradeService + ", degradeServicePath=" + degradeServicePath + ", degradeServiceDesc=" + degradeServiceDesc + ", weight=" + weight
+				+ ", connCount=" + connCount + ", isReviewed=" + isReviewed + ", hasDegradeService=" + hasDegradeService + "]";
+	}
 
 	public static RegisterMeta createRegiserMeta(PublishServiceCustomBody publishServiceCustomBody) {
 
