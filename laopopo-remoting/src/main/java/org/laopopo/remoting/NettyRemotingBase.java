@@ -11,6 +11,9 @@ import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.laopopo.common.exception.remoting.RemotingSendRequestException;
 import org.laopopo.common.exception.remoting.RemotingTimeoutException;
@@ -43,6 +46,16 @@ public abstract class NettyRemotingBase {
 	
 	//netty网络段channelInactive事件发生的处理器
 	protected Pair<NettyChannelInactiveProcessor, ExecutorService> defaultChannelInactiveProcessor;
+	
+	protected final ExecutorService publicExecutor = Executors.newFixedThreadPool(4, new ThreadFactory() {
+        private AtomicInteger threadIndex = new AtomicInteger(0);
+
+
+        @Override
+        public Thread newThread(Runnable r) {
+            return new Thread(r, "NettyClientPublicExecutor_" + this.threadIndex.incrementAndGet());
+        }
+    });
 	
 	//注入的某个requestCode对应的处理器放入到HashMap中，键值对一一匹配
 	protected final HashMap<Byte/* request code */, Pair<NettyRequestProcessor, ExecutorService>> processorTable =
@@ -214,5 +227,6 @@ public abstract class NettyRemotingBase {
             logger.warn(remotingTransporter.toString());
         }
 	}
+	
 	
 }

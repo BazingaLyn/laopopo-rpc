@@ -28,7 +28,7 @@ public class RegisterMeta {
 	// 建议连接数 hashCode()与equals()不把connCount计算在内
 	private volatile int connCount;
 	
-	private ServiceReviewState isReviewed = ServiceReviewState.HAS_NOT_REVIEWED;
+	private ServiceReviewState isReviewed = ServiceReviewState.PASS_REVIEW;
 	
 	private boolean hasDegradeService = false;
 	
@@ -123,8 +123,7 @@ public class RegisterMeta {
 	public void setServiceName(String serviceName) {
 		this.serviceName = serviceName;
 	}
-
-
+	
 
 	public static class Address {
 		// 地址

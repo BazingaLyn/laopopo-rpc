@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.laopopo.common.exception.remoting.RemotingSendRequestException;
+import org.laopopo.common.exception.remoting.RemotingTimeoutException;
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.transport.body.AckCustomBody;
 import org.laopopo.common.transport.body.PublishServiceCustomBody;
@@ -61,9 +63,12 @@ public class RegistryProviderManager implements RegistryProviderServer {
 
 	/**
 	 * 处理provider服务注册
+	 * @throws InterruptedException 
+	 * @throws RemotingTimeoutException 
+	 * @throws RemotingSendRequestException 
 	 */
 	@Override
-	public RemotingTransporter handlerRegister(RemotingTransporter remotingTransporter, Channel channel) {
+	public RemotingTransporter handlerRegister(RemotingTransporter remotingTransporter, Channel channel) throws RemotingSendRequestException, RemotingTimeoutException, InterruptedException {
 
 		//准备好ack信息返回个provider，悲观主义，默认返回失败ack，要求provider重新发送请求
 		AckCustomBody ackCustomBody = new AckCustomBody(remotingTransporter.getOpaque(), false, ACK_PUBLISH_FAILURE);
@@ -89,8 +94,10 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		
 		synchronized (globalRegisterInfoMap) {
 			
+			//获取到这个地址可能以前注册过的注册信息
 			RegisterMeta existRegiserMeta = maps.get(meta.getAddress());
 			
+			//如果等于空，则说明以前没有注册过
 			if(null == existRegiserMeta){
 				existRegiserMeta = meta;
 				maps.put(meta.getAddress(), existRegiserMeta);
@@ -300,7 +307,6 @@ public class RegistryProviderManager implements RegistryProviderServer {
 			for(RegisterMeta meta : values){
 				//判断是否人工审核过，审核过的情况下，组装给consumer的响应主体，返回个consumer
 				if(meta.getIsReviewed() == ServiceReviewState.PASS_REVIEW){
-					
 					ServiceInfo serviceInfo = new ServiceInfo(meta.getAddress().getHost(), meta.getAddress().getPort(), meta.getServiceName(), meta.isVIPService(),meta.getWeight(),meta.getConnCount());
 					serviceInfos.add(serviceInfo);
 				}

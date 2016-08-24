@@ -5,6 +5,7 @@ import java.util.concurrent.ExecutorService;
 import org.laopopo.common.exception.remoting.RemotingException;
 import org.laopopo.common.exception.remoting.RemotingSendRequestException;
 import org.laopopo.common.exception.remoting.RemotingTimeoutException;
+import org.laopopo.remoting.model.NettyChannelInactiveProcessor;
 import org.laopopo.remoting.model.NettyRequestProcessor;
 import org.laopopo.remoting.model.RemotingTransporter;
 
@@ -40,6 +41,9 @@ public interface RemotingClient extends BaseRemotingService {
 	 * @param executor
 	 */
 	void registerProcessor(final byte requestCode, final NettyRequestProcessor processor, final ExecutorService executor);
+	
+	
+	void registerChannelInactiveProcessor(NettyChannelInactiveProcessor processor, ExecutorService executor);
 
 	/**
 	 * 某个地址的长连接的channel是否可写

@@ -34,6 +34,10 @@ public class ServiceChannelGroup {
         groupList.remove(group);
 	}
 	
+	public static CopyOnWriteArrayList<ChannelGroup> getChannelGroupByServiceName(String service){
+		return groups.get(service);
+	}
+	
 	
 
 }

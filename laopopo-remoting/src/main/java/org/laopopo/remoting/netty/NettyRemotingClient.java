@@ -41,6 +41,7 @@ import org.laopopo.common.utils.Pair;
 import org.laopopo.remoting.ConnectionUtils;
 import org.laopopo.remoting.NettyRemotingBase;
 import org.laopopo.remoting.RPCHook;
+import org.laopopo.remoting.model.NettyChannelInactiveProcessor;
 import org.laopopo.remoting.model.NettyRequestProcessor;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.laopopo.remoting.netty.decode.RemotingTransporterDecoder;
@@ -77,8 +78,6 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 	private volatile int writeBufferHighWaterMark = -1;
 	private volatile int writeBufferLowWaterMark = -1;
 	
-	private final ExecutorService publicExecutor;
-
 	private final ConnectorIdleStateTrigger idleStateTrigger = new ConnectorIdleStateTrigger();
 
 	protected HashedWheelTimer timer = new HashedWheelTimer(new NamedThreadFactory("netty.timer"));
@@ -96,15 +95,6 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 			writeBufferLowWaterMark = nettyClientConfig.getWriteBufferLowWaterMark();
 			writeBufferHighWaterMark = nettyClientConfig.getWriteBufferHighWaterMark();
 		}
-		this.publicExecutor = Executors.newFixedThreadPool(4, new ThreadFactory() {
-            private AtomicInteger threadIndex = new AtomicInteger(0);
-
-
-            @Override
-            public Thread newThread(Runnable r) {
-                return new Thread(r, "NettyClientPublicExecutor_" + this.threadIndex.incrementAndGet());
-            }
-        });
 		init();
 	}
 
@@ -284,6 +274,11 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 		protected void channelRead0(ChannelHandlerContext ctx, RemotingTransporter msg) throws Exception {
 			processMessageReceived(ctx, msg);
 		}
+		
+		@Override
+		public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+			processChannelInactive(ctx);
+		}
 	}
 
 	@Override
@@ -440,5 +435,12 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 	public void setreconnect(boolean isReconnect) {
 		this.isReconnect = isReconnect;
 	}
-
+	
+	@Override
+	public void registerChannelInactiveProcessor(NettyChannelInactiveProcessor processor, ExecutorService executor) {
+		if(null == executor){
+			executor = this.publicExecutor;
+		}
+		this.defaultChannelInactiveProcessor = new Pair<NettyChannelInactiveProcessor, ExecutorService>(processor, executor);
+	}
 }

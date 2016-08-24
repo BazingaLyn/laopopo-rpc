@@ -1,12 +1,17 @@
 package org.laopopo.client.provider;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.laopopo.common.serialization.SerializerHolder.serializerImpl;
+import static org.laopopo.common.utils.Reflects.fastInvoke;
+import static org.laopopo.common.utils.Reflects.findMatchingParameterTypes;
+import static org.laopopo.common.utils.Status.APP_FLOW_CONTROL;
 import static org.laopopo.common.utils.Status.BAD_REQUEST;
 import static org.laopopo.common.utils.Status.SERVICE_NOT_FOUND;
-import static org.laopopo.common.utils.Status.APP_FLOW_CONTROL;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+
+import java.util.List;
 
 import javax.management.ServiceNotFoundException;
 
@@ -23,6 +28,7 @@ import org.laopopo.common.transport.body.ResponseCustomBody;
 import org.laopopo.common.transport.body.ResponseCustomBody.ResultWrapper;
 import org.laopopo.common.utils.Pair;
 import org.laopopo.common.utils.Status;
+import org.laopopo.common.utils.SystemClock;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,9 +51,6 @@ public class ProviderRPCController {
 
 	// 请求处理耗时统计(从request被解码开始, 到response数据被刷到OS内核缓冲区为止)
 	private static final Timer processingTimer = Metrics.timer("processing");
-
-	// 响应数据大小统计(不包括Jupiter协议头的16个字节)
-	private static final Histogram responseSizeHistogram = Metrics.histogram("response.size");
 
 	public ProviderRPCController(DefaultProvider defaultProvider) {
 		this.defaultProvider = defaultProvider;
@@ -87,7 +90,47 @@ public class ProviderRPCController {
 
 
 
-	private void process(Pair<CurrentServiceState, ServiceWrapper> pair, RemotingTransporter request, Channel channel) {
+	private void process(Pair<CurrentServiceState, ServiceWrapper> pair, final RemotingTransporter request, Channel channel) {
+		
+		Object invokeResult = null;
+		
+		CurrentServiceState currentServiceState = pair.getKey();
+		ServiceWrapper serviceWrapper = pair.getValue();
+		
+		Object targetCallObj = serviceWrapper.getServiceProvider();
+		
+		Object[] args = ((RequestCustomBody)request.getCustomHeader()).getArgs();
+		
+		if(currentServiceState.isHasDegrade() && serviceWrapper.getMockDegradeServiceProvider() != null){
+			targetCallObj = serviceWrapper.getMockDegradeServiceProvider();
+		}
+		
+		String methodName = serviceWrapper.getMethodName();
+		List<Class<?>[]> parameterTypesList = serviceWrapper.getParamters();
+		
+		
+		Class<?>[] parameterTypes = findMatchingParameterTypes(parameterTypesList, args);
+		invokeResult = fastInvoke(targetCallObj, methodName, parameterTypes, args);
+		
+		ResultWrapper result = new ResultWrapper();
+		result.setResult(invokeResult);
+		ResponseCustomBody body = new ResponseCustomBody(Status.OK.value(), result);
+		
+		final RemotingTransporter response = RemotingTransporter.createResponseTransporter(LaopopoProtocol.RPC_RESPONSE, body, request.getOpaque());
+		
+		channel.writeAndFlush(response).addListener(new ChannelFutureListener() {
+
+			public void operationComplete(ChannelFuture future) throws Exception {
+				
+				long elapsed = SystemClock.millisClock().now() - request.timestamp();
+				if (future.isSuccess()) {
+					
+					processingTimer.update(elapsed, MILLISECONDS);
+				} else {
+					logger.info("request {} get failed response {}", request, response);
+				}
+			}
+		});
 		
 	}
 

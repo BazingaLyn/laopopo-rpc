@@ -11,6 +11,8 @@ import io.netty.util.internal.ConcurrentSet;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.laopopo.common.exception.remoting.RemotingSendRequestException;
+import org.laopopo.common.exception.remoting.RemotingTimeoutException;
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.transport.body.SubcribeResultCustomBody;
 import org.laopopo.common.transport.body.SubcribeResultCustomBody.ServiceInfo;
@@ -59,8 +61,11 @@ public class RegistryConsumerManager {
 	 * 通知相关的订阅者服务的信息
 	 * 
 	 * @param meta
+	 * @throws InterruptedException 
+	 * @throws RemotingTimeoutException 
+	 * @throws RemotingSendRequestException 
 	 */
-	public void notifyMacthedSubscriber(final RegisterMeta meta) {
+	public void notifyMacthedSubscriber(final RegisterMeta meta) throws RemotingSendRequestException, RemotingTimeoutException, InterruptedException {
 		
 		// 构建订阅通知的主体传输对象
 		SubcribeResultCustomBody subcribeResultCustomBody = new SubcribeResultCustomBody();
@@ -71,23 +76,16 @@ public class RegistryConsumerManager {
 				subcribeResultCustomBody);
 
 		// 所有的订阅者的channel集合
-		subscriberChannels.writeAndFlush(sendConsumerRemotingTrasnporter, new ChannelMatcher() {
-
-			@Override
-			public boolean matches(Channel channel) {
-				//
-				boolean doSend = isChannelSubscribeOnServiceMeta(meta.getServiceName(), channel);
-				// TODO
-				// if (doSend) {
-				// MessageNonAck msgNonAck = new
-				// MessageNonAck(serviceMeta, msg, channel);
-				// // 收到ack后会移除当前key(参见handleAcknowledge), 否则超时超时重发
-				// messagesNonAck.put(msgNonAck.id, msgNonAck);
-				// }
-				return doSend;
+		if(!subscriberChannels.isEmpty()){
+			for(Channel channel :subscriberChannels){
+				if(isChannelSubscribeOnServiceMeta(meta.getServiceName(), channel)){
+					RemotingTransporter remotingTransporter = this.defaultRegistryServer.getRemotingServer().invokeSync(channel, sendConsumerRemotingTrasnporter, 3000l);
+				    if(remotingTransporter == null){
+				    	//超时重发
+				    }
+				}
 			}
-
-		});
+		}
 	}
 
 
@@ -101,6 +99,9 @@ public class RegistryConsumerManager {
 				subcribeResultCustomBody);
 		
 		// 所有的订阅者的channel集合
+		if(!subscriberChannels.isEmpty()){
+			
+		}
 		subscriberChannels.writeAndFlush(sendConsumerRemotingTrasnporter, new ChannelMatcher() {
 
 			@Override
@@ -151,5 +152,7 @@ public class RegistryConsumerManager {
 		serviceInfos.add(info);
 		subcribeResultCustomBody.setServiceInfos(serviceInfos);
 	}
+
+	
 
 }

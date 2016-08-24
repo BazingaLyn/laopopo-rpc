@@ -72,7 +72,7 @@ public class RemotingTransporter extends ByteHolder {
 		this.opaque = opaque;
 	}
 
-	public long getTimestamp() {
+	public long timestamp() {
 		return timestamp;
 	}
 

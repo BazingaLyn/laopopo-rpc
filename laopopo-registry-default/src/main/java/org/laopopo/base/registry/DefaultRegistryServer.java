@@ -90,5 +90,14 @@ public class DefaultRegistryServer implements RegistryServer {
 		return providerManager;
 	}
 
+	public NettyRemotingServer getRemotingServer() {
+		return remotingServer;
+	}
+
+	public void setRemotingServer(NettyRemotingServer remotingServer) {
+		this.remotingServer = remotingServer;
+	}
+	
+
 
 }

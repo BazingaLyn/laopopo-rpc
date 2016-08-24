@@ -66,4 +66,15 @@ public class ConnectionUtils {
 
 	        return sb.toString();
 		}
+
+		public static int getPortFromAddress(String serviceListenAddress) {
+			int port = 0;
+			if(null != serviceListenAddress){
+				String[] strs = serviceListenAddress.split(":");
+				if(strs.length == 2){
+					port = Integer.parseInt(strs[1]);
+				}
+			}
+			return port;
+		}
 }

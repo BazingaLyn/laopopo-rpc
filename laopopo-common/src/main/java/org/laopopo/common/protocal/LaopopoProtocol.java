@@ -47,7 +47,7 @@ public class LaopopoProtocol {
     public static final byte HEARTBEAT = 127;
     
     public static final byte ACK = 126;
-    
+
     
 
     

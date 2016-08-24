@@ -24,7 +24,7 @@ public class DefaultConsumerTest_1 {
 		
 		client.subcribeService("LAOPOPO.TEST.SAYHELLO");
 		
-		
+//		client.call("", args)
 		
 	}
 

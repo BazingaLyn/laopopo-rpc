@@ -2,6 +2,8 @@ package org.laopopo.base.registry;
 
 import io.netty.channel.Channel;
 
+import org.laopopo.common.exception.remoting.RemotingSendRequestException;
+import org.laopopo.common.exception.remoting.RemotingTimeoutException;
 import org.laopopo.remoting.model.RemotingTransporter;
 
 /**
@@ -19,6 +21,9 @@ public interface RegistryProviderServer {
 	 * @param remotingTransporter 里面的CommonCustomBody 是#PublishServiceCustomBody
 	 * @param channel
 	 * @return
+	 * @throws InterruptedException 
+	 * @throws RemotingTimeoutException 
+	 * @throws RemotingSendRequestException 
 	 */
-	RemotingTransporter handlerRegister(RemotingTransporter remotingTransporter,Channel channel);
+	RemotingTransporter handlerRegister(RemotingTransporter remotingTransporter,Channel channel) throws RemotingSendRequestException, RemotingTimeoutException, InterruptedException;
 }

@@ -186,6 +186,7 @@ public class NettyRemotingServer extends NettyRemotingBase implements RemotingSe
 		try {
 			logger.info("netty bind [{}] serverBootstrap start...",this.nettyServerConfig.getListenPort());
             this.serverBootstrap.bind().sync();
+            logger.info("netty start success at port [{}]",this.nettyServerConfig.getListenPort());
         }
         catch (InterruptedException e1) {
         	logger.error("start serverBootstrap exception [{}]",e1.getMessage());
@@ -246,6 +247,9 @@ public class NettyRemotingServer extends NettyRemotingBase implements RemotingSe
 	
 	@Override
 	public void registerChannelInactiveProcessor(NettyChannelInactiveProcessor processor, ExecutorService executor) {
+		if(executor == null){
+			executor = super.publicExecutor;
+		}
 		this.defaultChannelInactiveProcessor = new Pair<NettyChannelInactiveProcessor, ExecutorService>(processor, executor);
 	}
 

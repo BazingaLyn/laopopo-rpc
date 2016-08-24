@@ -172,6 +172,7 @@ public class ServiceWrapper {
 	public void setVIPService(boolean isVIPService) {
 		this.isVIPService = isVIPService;
 	}
+	
 
 	@Override
 	public String toString() {

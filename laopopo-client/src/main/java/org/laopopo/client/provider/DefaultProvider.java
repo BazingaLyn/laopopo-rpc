@@ -3,17 +3,17 @@ package org.laopopo.client.provider;
 import io.netty.channel.Channel;
 
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.laopopo.client.provider.flow.control.FlowController;
-import org.laopopo.client.provider.model.ServiceWrapper;
+import org.laopopo.client.provider.model.DefaultProviderInactiveProcessor;
 import org.laopopo.common.exception.remoting.RemotingException;
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.utils.NamedThreadFactory;
+import org.laopopo.remoting.ConnectionUtils;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.laopopo.remoting.netty.NettyClientConfig;
 import org.laopopo.remoting.netty.NettyRemotingClient;
@@ -54,6 +54,9 @@ public class DefaultProvider implements Provider {
 	private FlowController globalController;
     /***********要提供的服务***************/
 	private Object[] obj;
+	
+	//当前provider端状态是否健康，也就是说如果注册宕机后，该provider端的实例信息是失效，这是需要重新发送注册信息,因为默认状态下start就是发送，只有channel inactive的时候说明短线了，需要重新发布信息
+	private boolean ProviderStateIsHealthy = true;
 
 	// 定时任务
 	private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("provider-timer"));
@@ -83,7 +86,9 @@ public class DefaultProvider implements Provider {
 			public void run() {
 				// 延迟5秒，每隔60秒开始 像其发送注册服务信息
 				try {
-					DefaultProvider.this.publishedAndStartProvider();
+					if(!ProviderStateIsHealthy){
+						DefaultProvider.this.publishedAndStartProvider();
+					}
 				} catch (Exception e) {
 					logger.warn("schedule publish failed [{}]",e.getMessage());
 				} 
@@ -95,8 +100,10 @@ public class DefaultProvider implements Provider {
 	private void registerProcessor() {
 		//provider端作为client端去连接registry注册中心的处理器
 		this.nettyRemotingClient.registerProcessor(LaopopoProtocol.DEGRADE_SERVICE, new DefaultProviderRegistryProcessor(this), null);
+		this.nettyRemotingClient.registerChannelInactiveProcessor(new DefaultProviderInactiveProcessor(this), null);
 		//provider端作为netty的server端去等待调用者连接的处理器，此处理器只处理RPC请求
 		this.nettyRemotingServer.registerDefaultProcessor(new DefaultProviderRPCProcessor(this), this.remotingExecutor);
+		this.nettyRemotingVipServer.registerDefaultProcessor(new DefaultProviderRPCProcessor(this), this.remotingVipExecutor);
 	}
 
 	public List<RemotingTransporter> getPublishRemotingTransporters() {
@@ -152,14 +159,24 @@ public class DefaultProvider implements Provider {
 		//编织服务
 		this.publishRemotingTransporters = providerController.getLocalServerWrapperManager().wrapperRegisterInfo(this.getServiceListenAddress(),
 				this.getGlobalController(), this.obj);
+		
 		logger.info("registry center address [{}] serviceAddress [{}] service [{}]", this.registryAddress, this.serviceListenAddress,
 				this.publishRemotingTransporters);
+		
 		nettyRemotingClient.start();
 		//发布任务
 		this.publishedAndStartProvider();
 		logger.info("provider start successfully");
 		
-//		this.nettyRemotingVipServer.
+		if(serviceListenAddress != null){
+			int port = ConnectionUtils.getPortFromAddress(serviceListenAddress);
+			this.serverConfig.setListenPort(port);
+			this.nettyRemotingServer.start();
+			
+			int vipPort = port - 2;
+			this.serverConfig.setListenPort(vipPort);
+			this.nettyRemotingVipServer.start();
+		}
 
 	}
 	
@@ -187,4 +204,12 @@ public class DefaultProvider implements Provider {
 		return providerRPCController;
 	}
 
+	public boolean isProviderStateIsHealthy() {
+		return ProviderStateIsHealthy;
+	}
+
+	public void setProviderStateIsHealthy(boolean providerStateIsHealthy) {
+		ProviderStateIsHealthy = providerStateIsHealthy;
+	}
+	
 }
