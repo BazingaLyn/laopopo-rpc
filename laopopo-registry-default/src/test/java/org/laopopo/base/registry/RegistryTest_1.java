@@ -4,8 +4,8 @@ import io.netty.util.internal.ConcurrentSet;
 
 import java.util.concurrent.ConcurrentMap;
 
-import org.laopopo.registry.model.RegisterMeta;
-import org.laopopo.registry.model.RegisterMeta.Address;
+import org.laopopo.common.rpc.RegisterMeta;
+import org.laopopo.common.rpc.RegisterMeta.Address;
 import org.laopopo.remoting.netty.NettyServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

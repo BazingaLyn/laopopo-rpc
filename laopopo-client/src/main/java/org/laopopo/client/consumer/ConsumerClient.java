@@ -1,16 +1,15 @@
 package org.laopopo.client.consumer;
 
+import static org.laopopo.common.serialization.SerializerHolder.serializerImpl;
 import io.netty.channel.Channel;
 
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadLocalRandom;
-import static org.laopopo.common.serialization.SerializerHolder.serializerImpl;
 
 import org.laopopo.common.exception.remoting.RemotingSendRequestException;
 import org.laopopo.common.exception.remoting.RemotingTimeoutException;
 import org.laopopo.common.exception.rpc.NoServiceException;
 import org.laopopo.common.protocal.LaopopoProtocol;
-import org.laopopo.common.serialization.SerializerHolder;
 import org.laopopo.common.transport.body.RequestCustomBody;
 import org.laopopo.common.transport.body.ResponseCustomBody;
 import org.laopopo.common.utils.ChannelGroup;
@@ -40,7 +39,7 @@ public class ConsumerClient extends DefaultConsumer {
 			throw new NoServiceException("调用的服务名不能为空");
 		}
 		ChannelGroup channelGroup = getAllMatchedChannel(serviceName);
-		if (channelGroup.size() == 0) {
+		if (channelGroup == null || channelGroup.size() == 0) {
 			throw new NoServiceException("没有第三方提供该服务，请检查服务名");
 		}
 
@@ -59,7 +58,7 @@ public class ConsumerClient extends DefaultConsumer {
 
 	private ChannelGroup getAllMatchedChannel(String serviceName) {
 		CopyOnWriteArrayList<ChannelGroup> channelGroups = ServiceChannelGroup.getChannelGroupByServiceName(serviceName);
-		return loadBalance(channelGroups);
+		return null == channelGroups ? null :loadBalance(channelGroups);
 	}
 
 	private ChannelGroup loadBalance(CopyOnWriteArrayList<ChannelGroup> group) {

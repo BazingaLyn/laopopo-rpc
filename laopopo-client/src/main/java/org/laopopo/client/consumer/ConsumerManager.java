@@ -7,21 +7,22 @@ import static org.laopopo.common.utils.Constants.ACK_SUBCRIBE_SERVICE_FAILED;
 import static org.laopopo.common.utils.Constants.ACK_SUBCRIBE_SERVICE_SUCCESS;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.laopopo.client.consumer.NotifyListener.NotifyEvent;
 import org.laopopo.common.protocal.LaopopoProtocol;
+import org.laopopo.common.rpc.RegisterMeta;
 import org.laopopo.common.transport.body.AckCustomBody;
 import org.laopopo.common.transport.body.SubcribeResultCustomBody;
 import org.laopopo.common.transport.body.SubcribeResultCustomBody.ServiceInfo;
 import org.laopopo.common.utils.ChannelGroup;
-import org.laopopo.common.utils.NettyChannelGroup;
 import org.laopopo.common.utils.UnresolvedAddress;
 import org.laopopo.remoting.ConnectionUtils;
 import org.laopopo.remoting.model.RemotingTransporter;
@@ -45,7 +46,7 @@ public class ConsumerManager {
 
 	private final Map<String, List<ServiceInfo>> registries = new ConcurrentHashMap<String, List<ServiceInfo>>();
 	// TODO group中健康度的检查 定时任务
-	protected final ConcurrentMap<UnresolvedAddress, ChannelGroup> addressGroups = new ConcurrentHashMap<UnresolvedAddress, ChannelGroup>();
+	
 
 	public ConsumerManager(DefaultConsumer defaultConsumer) {
 		this.defaultConsumer = defaultConsumer;
@@ -72,7 +73,8 @@ public class ConsumerManager {
 				if(null == serviceName){
 					serviceName = serivceInfo.getServiceProviderName();
 				}
-				notify(serviceName, serivceInfo,ServiceInfoState.CHILD_ADDED);
+				RegisterMeta meta 
+				notify(serviceName, serivceInfo,NotifyEvent.CHILD_ADDED);
 			}
 		}
 
@@ -96,7 +98,7 @@ public class ConsumerManager {
 		if (subcribeResultCustomBody != null && subcribeResultCustomBody.getServiceInfos() != null && !subcribeResultCustomBody.getServiceInfos().isEmpty()) {
 
 			for (ServiceInfo serivceInfo : subcribeResultCustomBody.getServiceInfos()) {
-				notify(serivceInfo.getServiceProviderName(), serivceInfo,ServiceInfoState.CHILD_REMOVED);
+				notify(serivceInfo.getServiceProviderName(), serivceInfo,NotifyEvent.CHILD_REMOVED);
 			}
 		}
 
@@ -115,13 +117,9 @@ public class ConsumerManager {
 		return null;
 	}
 
-	public enum ServiceInfoState {
-		CHILD_ADDED, CHILD_REMOVED
-	}
-
 	/************************* ↑为核心方法，下面为内部方法 ************************/
 
-	private void notify(String serviceName, ServiceInfo serivceInfo, ServiceInfoState event) {
+	private void notify(String serviceName, ServiceInfo serivceInfo, NotifyEvent event) {
 
 		boolean notifyNeeded = false;
 
@@ -130,16 +128,16 @@ public class ConsumerManager {
 		try {
 			List<ServiceInfo> infos = registries.get(serviceName);
 			if (infos == null) {
-				if (event == ServiceInfoState.CHILD_REMOVED) {
+				if (event == NotifyEvent.CHILD_REMOVED) {
 					return;
 				}
 				infos = new ArrayList<ServiceInfo>();
 				infos.add(serivceInfo);
 				notifyNeeded = true;
 			} else {
-				if (event == ServiceInfoState.CHILD_REMOVED) {
+				if (event == NotifyEvent.CHILD_REMOVED) {
 					infos.remove(serivceInfo);
-				} else if (event == ServiceInfoState.CHILD_ADDED) {
+				} else if (event == NotifyEvent.CHILD_ADDED) {
 					infos.add(serivceInfo);
 				}
 				notifyNeeded = true;
@@ -150,13 +148,21 @@ public class ConsumerManager {
 		}
 
 		if (notifyNeeded) {
+			
+			
+			NotifyListener listener = this.defaultConsumer.getDefaultConsumerRegistry().getServiceMatchedNotifyListener().get(serviceName);
+			if(null != listener){
+				listener.notify(serviceName, event);
+			}
+			
+			
 			// host
 			String remoteHost = serivceInfo.getHost();
 			// port vip服务 port端口号-2
 			int remotePort = serivceInfo.isVIPService() ? (serivceInfo.getPort() - 2) : serivceInfo.getPort();
 
 			final ChannelGroup group = group(new UnresolvedAddress(remoteHost, remotePort));
-			if (event == ServiceInfoState.CHILD_ADDED) {
+			if (event == NotifyEvent.CHILD_ADDED) {
 				// 链路复用，如果此host和port对应的链接的channelGroup是已经存在的，则无需建立新的链接，只需要将此group与service建立关系即可
 				if (!group.isAvailable()) {
 
@@ -166,51 +172,30 @@ public class ConsumerManager {
 
 					for (int i = 0; i < connCount; i++) {
 
-						Channel channel = connectToProvider(remotePort, remoteHost);
-						if (null == channel) {
-							logger.warn("port {} and host {} connection failed.", remotePort, remoteHost);
-							continue;
-						} else {
-							group.add(channel);
+						try {
+							// 所有的consumer与provider之间的链接不进行短线重连操作
+							this.defaultConsumer.getProviderNettyRemotingClient().setreconnect(false);
+							this.defaultConsumer.getProviderNettyRemotingClient().getBootstrap()
+									.connect(ConnectionUtils.string2SocketAddress(remoteHost + ":" + remotePort)).addListener(new ChannelFutureListener() {
+
+										@Override
+										public void operationComplete(ChannelFuture future) throws Exception {
+											group.add(future.channel());
+										}
+										
+									});
+						} catch (Exception e) {
+							logger.error("connection provider host [{}] and port [{}] occor exception [{}]", remoteHost, remotePort, e.getMessage());
 						}
 					}
 					ServiceChannelGroup.addIfAbsent(serviceName,group);
 				}
-			}else if(event == ServiceInfoState.CHILD_REMOVED){
+			}else if(event == NotifyEvent.CHILD_REMOVED){
 				ServiceChannelGroup.removedIfAbsent(serviceName, group);
 				//TODO 这边如果此channel只被一个服务使用，那么此时应该最好是关闭channel
 			}
 		}
 	}
 
-	private Channel connectToProvider(int remotePort, String remoteHost) {
-		try {
-			// 所有的consumer与provider之间的链接不进行短线重连操作
-			this.defaultConsumer.getProviderNettyRemotingClient().setreconnect(false);
-			ChannelFuture channelFuture = this.defaultConsumer.getProviderNettyRemotingClient().getBootstrap()
-					.connect(ConnectionUtils.string2SocketAddress(remoteHost + ":" + remotePort));
-			return channelFuture.channel();
-		} catch (Exception e) {
-			logger.error("connection provider host [{}] and port [{}] occor exception [{}]", remoteHost, remotePort, e.getMessage());
-			return null;
-		}
-	}
-
-	private ChannelGroup group(UnresolvedAddress address) {
-
-		ChannelGroup group = addressGroups.get(address);
-		if (group == null) {
-			ChannelGroup newGroup = newChannelGroup(address);
-			group = addressGroups.putIfAbsent(address, newGroup);
-			if (group == null) {
-				group = newGroup;
-			}
-		}
-		return group;
-	}
-
-	private ChannelGroup newChannelGroup(UnresolvedAddress address) {
-		return new NettyChannelGroup(address);
-	}
 
 }

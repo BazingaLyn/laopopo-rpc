@@ -1,8 +1,24 @@
 package org.laopopo.client.consumer;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+
+import org.laopopo.client.consumer.NotifyListener.NotifyEvent;
 import org.laopopo.common.protocal.LaopopoProtocol;
+import org.laopopo.common.utils.ChannelGroup;
+import org.laopopo.common.utils.JUnsafe;
+import org.laopopo.common.utils.NettyChannelGroup;
+import org.laopopo.common.utils.UnresolvedAddress;
+import org.laopopo.remoting.ConnectionUtils;
 import org.laopopo.remoting.netty.NettyClientConfig;
 import org.laopopo.remoting.netty.NettyRemotingClient;
 import org.slf4j.Logger;
@@ -30,8 +46,10 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 	protected NettyRemotingClient providerNettyRemotingClient;
 
 	private DefaultConsumerRegistry defaultConsumerRegistry;
-	
+
 	private ConsumerManager consumerManager;
+	
+	protected final ConcurrentMap<UnresolvedAddress, ChannelGroup> addressGroups = new ConcurrentHashMap<UnresolvedAddress, ChannelGroup>();
 
 	private Channel registyChannel;
 
@@ -58,14 +76,127 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 		this.registryNettyRemotingClient.registerProcessor(LaopopoProtocol.SUBCRIBE_SERVICE_CANCEL, new DefaultConsumerRegistryProcessor(this), null);
 	}
 
-	 @Override
-	public void subcribeService(String... serviceNames) {
-		 if(serviceNames.length > 0){
-			 this.defaultConsumerRegistry.subcribeService(serviceNames);
-		 }
-		
+	@Override
+	public SubscribeManager subscribeService(final String service) {
+
+		SubscribeManager manager = new SubscribeManager() {
+
+			private final ReentrantLock lock = new ReentrantLock();
+			private final Condition notifyCondition = lock.newCondition();
+			private final AtomicBoolean signalNeeded = new AtomicBoolean(false);
+
+			@Override
+			public void start() {
+				subcribeService(service, new NotifyListener() {
+					
+					@Override
+					public void notify(String serviceName, NotifyEvent event) {
+
+						// host
+						String remoteHost = serivceInfo.getHost();
+						// port vip服务 port端口号-2
+						int remotePort = serivceInfo.isVIPService() ? (serivceInfo.getPort() - 2) : serivceInfo.getPort();
+
+						final ChannelGroup group = group(new UnresolvedAddress(remoteHost, remotePort));
+						if (event == NotifyEvent.CHILD_ADDED) {
+							// 链路复用，如果此host和port对应的链接的channelGroup是已经存在的，则无需建立新的链接，只需要将此group与service建立关系即可
+							if (!group.isAvailable()) {
+
+								int connCount = serivceInfo.getConnCount() < 0 ? 1 : serivceInfo.getConnCount();
+
+								group.setWeight(serivceInfo.getWeight());
+
+								for (int i = 0; i < connCount; i++) {
+
+									try {
+										// 所有的consumer与provider之间的链接不进行短线重连操作
+										this.defaultConsumer.getProviderNettyRemotingClient().setreconnect(false);
+										this.defaultConsumer.getProviderNettyRemotingClient().getBootstrap()
+												.connect(ConnectionUtils.string2SocketAddress(remoteHost + ":" + remotePort)).addListener(new ChannelFutureListener() {
+
+													@Override
+													public void operationComplete(ChannelFuture future) throws Exception {
+														group.add(future.channel());
+													}
+													
+												});
+									} catch (Exception e) {
+										logger.error("connection provider host [{}] and port [{}] occor exception [{}]", remoteHost, remotePort, e.getMessage());
+									}
+								}
+								ServiceChannelGroup.addIfAbsent(serviceName,group);
+							}
+						}else if(event == NotifyEvent.CHILD_REMOVED){
+							ServiceChannelGroup.removedIfAbsent(serviceName, group);
+							//TODO 这边如果此channel只被一个服务使用，那么此时应该最好是关闭channel
+						}
+					}
+				});
+				onSucceed(signalNeeded.getAndSet(false));
+			}
+
+			@Override
+			public boolean waitForAvailable(long timeoutMillis) {
+				if (isServiceAvailable(service)) {
+                    return true;
+                }
+				boolean available = false;
+                long start = System.nanoTime();
+                final ReentrantLock _look = lock;
+                _look.lock();
+                try {
+                    while (!isServiceAvailable(service)) {
+                        signalNeeded.set(true);
+                        notifyCondition.await(timeoutMillis, MILLISECONDS);
+
+                        available = isServiceAvailable(service);
+                        if (available || (System.nanoTime() - start) > MILLISECONDS.toNanos(timeoutMillis)) {
+                            break;
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    JUnsafe.throwException(e);
+                } finally {
+                    _look.unlock();
+                }
+                return available;
+			}
+
+			private boolean isServiceAvailable(String service) {
+				CopyOnWriteArrayList<ChannelGroup> list = ServiceChannelGroup.getChannelGroupByServiceName(service);
+				return list == null ? false :list.size() > 0 ? true : false;
+			}
+
+			private void onSucceed(boolean doSignal) {
+				if (doSignal) {
+                    final ReentrantLock _look = lock;
+                    _look.lock();
+                    try {
+                        notifyCondition.signalAll();
+                    } finally {
+                        _look.unlock();
+                    }
+                }
+			}
+
+		};
+		manager.start();
+		return manager;
 	}
 	
+	@Override
+	public void subcribeService(String subcribeServices, NotifyListener listener) {
+		if (subcribeServices != null) {
+			this.defaultConsumerRegistry.subcribeService(subcribeServices,listener);
+		}
+	}
+
+//	private void subcribeService(String serviceNames) {
+//		if (serviceNames != null) {
+//			this.defaultConsumerRegistry.subcribeService(serviceNames);
+//		}
+//	}
+
 	@Override
 	public void start() {
 		this.registryNettyRemotingClient.start();
@@ -75,12 +206,12 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 
 	@Override
 	public void getOrUpdateHealthyChannel() {
-		
+
 		String addresses = this.registryClientConfig.getDefaultAddress();
 
-		if(registyChannel != null && registyChannel.isActive()&& registyChannel.isWritable())
+		if (registyChannel != null && registyChannel.isActive() && registyChannel.isWritable())
 			return;
-		
+
 		if (addresses == null || "".equals(addresses)) {
 			logger.error("registry address is empty");
 			return;
@@ -89,33 +220,33 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 		long maxTimeout = this.consumerConfig.getMaxRetryConnectionRegsitryTime();
 
 		String[] adds = addresses.split(",");
-		
-		for(int i = 0;i < adds.length;i++){
-			
-			if(registyChannel != null && registyChannel.isActive()&& registyChannel.isWritable())
+
+		for (int i = 0; i < adds.length; i++) {
+
+			if (registyChannel != null && registyChannel.isActive() && registyChannel.isWritable())
 				return;
-			
+
 			String currentAddress = adds[i];
 			final long beginTimestamp = System.currentTimeMillis();
 			long endTimestamp = beginTimestamp;
-			
+
 			int times = 0;
 
-			 for (; times < retryConnectionTimes && (endTimestamp - beginTimestamp) < maxTimeout; times++) {
-				 try {
+			for (; times < retryConnectionTimes && (endTimestamp - beginTimestamp) < maxTimeout; times++) {
+				try {
 					Channel channel = registryNettyRemotingClient.createChannel(currentAddress);
-					if(channel != null && channel.isActive()&& channel.isWritable()){
+					if (channel != null && channel.isActive() && channel.isWritable()) {
 						this.registyChannel = channel;
 						break;
-					}else{
+					} else {
 						continue;
 					}
 				} catch (InterruptedException e) {
-					logger.warn("connection registry center [{}] fail",currentAddress);
+					logger.warn("connection registry center [{}] fail", currentAddress);
 					endTimestamp = System.currentTimeMillis();
 					continue;
 				}
-			 }
+			}
 		}
 
 	}
@@ -168,5 +299,30 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 		this.providerNettyRemotingClient = providerNettyRemotingClient;
 	}
 
+	public DefaultConsumerRegistry getDefaultConsumerRegistry() {
+		return defaultConsumerRegistry;
+	}
+
+	public void setDefaultConsumerRegistry(DefaultConsumerRegistry defaultConsumerRegistry) {
+		this.defaultConsumerRegistry = defaultConsumerRegistry;
+	}
+	
+	private ChannelGroup group(UnresolvedAddress address) {
+
+		ChannelGroup group = addressGroups.get(address);
+		if (group == null) {
+			ChannelGroup newGroup = newChannelGroup(address);
+			group = addressGroups.putIfAbsent(address, newGroup);
+			if (group == null) {
+				group = newGroup;
+			}
+		}
+		return group;
+	}
+
+	private ChannelGroup newChannelGroup(UnresolvedAddress address) {
+		return new NettyChannelGroup(address);
+	}
+	
 
 }

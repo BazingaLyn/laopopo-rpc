@@ -7,8 +7,8 @@ import io.netty.util.internal.ConcurrentSet;
 
 import org.laopopo.common.exception.remoting.RemotingSendRequestException;
 import org.laopopo.common.exception.remoting.RemotingTimeoutException;
-import org.laopopo.registry.model.RegisterMeta;
-import org.laopopo.registry.model.RegisterMeta.Address;
+import org.laopopo.common.rpc.RegisterMeta;
+import org.laopopo.common.rpc.RegisterMeta.Address;
 import org.laopopo.remoting.model.NettyChannelInactiveProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

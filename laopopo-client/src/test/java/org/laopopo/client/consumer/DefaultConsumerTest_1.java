@@ -1,5 +1,6 @@
 package org.laopopo.client.consumer;
 
+import org.laopopo.client.consumer.Consumer.SubscribeManager;
 import org.laopopo.remoting.netty.NettyClientConfig;
 
 /**
@@ -22,9 +23,11 @@ public class DefaultConsumerTest_1 {
 		
 		client.start();
 		
-		client.subcribeService("LAOPOPO.TEST.SAYHELLO");
+		SubscribeManager subscribeManager = client.subscribeService("LAOPOPO.TEST.SAYHELLO");
 		
-		Thread.sleep(1000l);
+		if(!subscribeManager.waitForAvailable(3000l)){
+			throw new Exception("init service timeout or init occor exception");
+		}
 		
 		Object obj = client.call("LAOPOPO.TEST.SAYHELLO", "shine");
 		if(obj instanceof String){

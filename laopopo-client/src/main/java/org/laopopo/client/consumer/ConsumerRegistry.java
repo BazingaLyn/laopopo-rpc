@@ -1,6 +1,7 @@
 package org.laopopo.client.consumer;
 
 
+
 /**
  * 
  * @author BazingaLyn
@@ -12,7 +13,7 @@ public interface ConsumerRegistry {
 	
 	void getOrUpdateHealthyChannel();
 	
-	void subcribeService(String... subcribeServices);
+	void subcribeService(String subcribeServices,NotifyListener listener);
 	
 	void start();
 	
