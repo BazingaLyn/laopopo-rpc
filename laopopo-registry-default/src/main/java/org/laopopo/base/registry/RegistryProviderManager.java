@@ -123,8 +123,11 @@ public class RegistryProviderManager implements RegistryProviderServer {
 	 * @param request
 	 * @param channel
 	 * @return
+	 * @throws InterruptedException 
+	 * @throws RemotingTimeoutException 
+	 * @throws RemotingSendRequestException 
 	 */
-	public RemotingTransporter handlerRegisterCancel(RemotingTransporter request, Channel channel) {
+	public RemotingTransporter handlerRegisterCancel(RemotingTransporter request, Channel channel) throws RemotingSendRequestException, RemotingTimeoutException, InterruptedException {
 		
 		//准备好ack信息返回个provider，悲观主义，默认返回失败ack，要求provider重新发送请求
 		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false, ACK_PUBLISH_CANCEL_FAILURE);
@@ -185,8 +188,11 @@ public class RegistryProviderManager implements RegistryProviderServer {
 	 * 服务下线的接口
 	 * @param meta
 	 * @param channel
+	 * @throws InterruptedException 
+	 * @throws RemotingTimeoutException 
+	 * @throws RemotingSendRequestException 
 	 */
-	public void handlePublishCancel(RegisterMeta meta, Channel channel) {
+	public void handlePublishCancel(RegisterMeta meta, Channel channel) throws RemotingSendRequestException, RemotingTimeoutException, InterruptedException {
 
 		if (logger.isDebugEnabled()) {
 			logger.info("Cancel publish {} on channel{}.", meta, channel);
@@ -251,12 +257,6 @@ public class RegistryProviderManager implements RegistryProviderServer {
 	}
 
 
-	private boolean isChannelSubscribeOnServiceMeta(String serviceMeta, Channel channel) {
-//		ConcurrentSet<ServiceMeta> serviceMetaSet = channel.attr(S_SUBSCRIBE_KEY).get();
-//
-//		return serviceMetaSet != null && serviceMetaSet.contains(serviceMeta);
-		return true;
-	}
 
 	private void attachPublishEventOnChannel(RegisterMeta meta, Channel channel) {
 

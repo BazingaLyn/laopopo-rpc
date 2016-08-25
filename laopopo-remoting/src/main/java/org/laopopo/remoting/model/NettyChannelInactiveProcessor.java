@@ -1,5 +1,8 @@
 package org.laopopo.remoting.model;
 
+import org.laopopo.common.exception.remoting.RemotingSendRequestException;
+import org.laopopo.common.exception.remoting.RemotingTimeoutException;
+
 import io.netty.channel.ChannelHandlerContext;
 
 /**
@@ -12,5 +15,5 @@ import io.netty.channel.ChannelHandlerContext;
 public interface NettyChannelInactiveProcessor {
 	
 	
-	void processChannelInactive(ChannelHandlerContext ctx);
+	void processChannelInactive(ChannelHandlerContext ctx) throws RemotingSendRequestException, RemotingTimeoutException, InterruptedException;
 }

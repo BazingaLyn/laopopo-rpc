@@ -58,7 +58,7 @@ public class DefaultProvider implements Provider {
 	//当前provider端状态是否健康，也就是说如果注册宕机后，该provider端的实例信息是失效，这是需要重新发送注册信息,因为默认状态下start就是发送，只有channel inactive的时候说明短线了，需要重新发布信息
 	private boolean ProviderStateIsHealthy = true;
 
-	// 定时任务
+	// 定时任务执行器
 	private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("provider-timer"));
 
 	public DefaultProvider(NettyClientConfig clientConfig, NettyServerConfig serverConfig) {
@@ -81,12 +81,13 @@ public class DefaultProvider implements Provider {
 		this.registerProcessor();
 
 		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
-
 			@Override
 			public void run() {
 				// 延迟5秒，每隔60秒开始 像其发送注册服务信息
 				try {
+					logger.info("schedule check publish service");
 					if(!ProviderStateIsHealthy){
+						logger.info("channel which connected to registry,has been inactived,need to republish service");
 						DefaultProvider.this.publishedAndStartProvider();
 					}
 				} catch (Exception e) {
@@ -94,6 +95,18 @@ public class DefaultProvider implements Provider {
 				} 
 			}
 		}, 60, 60, TimeUnit.SECONDS);
+		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
+
+            @Override
+            public void run() {
+            	try {
+            		logger.info("ready send message which send registry failed");
+					DefaultProvider.this.providerController.getRegistryController().checkPublishFailMessage();
+				} catch (InterruptedException | RemotingException e) {
+					logger.warn("schedule republish failed [{}]",e.getMessage());
+				}
+            }
+        }, 1, 1, TimeUnit.MINUTES);
 
 	}
 
@@ -116,6 +129,8 @@ public class DefaultProvider implements Provider {
 		
 		logger.info("publish service....");
 		providerController.getRegistryController().publishedAndStartProvider();
+		//发布之后再次将服务状态改成true
+		ProviderStateIsHealthy = true;
 	}
 
 	@Override

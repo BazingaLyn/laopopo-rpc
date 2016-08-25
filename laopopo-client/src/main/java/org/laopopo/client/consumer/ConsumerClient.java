@@ -1,22 +1,24 @@
 package org.laopopo.client.consumer;
 
-import java.util.concurrent.ConcurrentHashMap;
+import io.netty.channel.Channel;
+
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadLocalRandom;
+import static org.laopopo.common.serialization.SerializerHolder.serializerImpl;
 
-import org.laopopo.client.consumer.dispatcher.DefaultDispatcher;
-import org.laopopo.client.consumer.promise.DefaultResultPromise;
-import org.laopopo.client.preheater.ConectionPreHeater;
+import org.laopopo.common.exception.remoting.RemotingSendRequestException;
+import org.laopopo.common.exception.remoting.RemotingTimeoutException;
 import org.laopopo.common.exception.rpc.NoServiceException;
 import org.laopopo.common.protocal.LaopopoProtocol;
+import org.laopopo.common.serialization.SerializerHolder;
 import org.laopopo.common.transport.body.RequestCustomBody;
+import org.laopopo.common.transport.body.ResponseCustomBody;
 import org.laopopo.common.utils.ChannelGroup;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.laopopo.remoting.netty.NettyClientConfig;
 
 public class ConsumerClient extends DefaultConsumer {
 
-	private ConcurrentHashMap<String, Boolean> preHeatStatusMap = new ConcurrentHashMap<String, Boolean>();
 
 	public static final long DEFAULT_TIMEOUT = 3 * 1000l;
 	
@@ -33,12 +35,6 @@ public class ConsumerClient extends DefaultConsumer {
 	@Override
 	public Object call(String serviceName, long timeout, Object... args) throws Throwable {
 		// 查看该服务是否已经可用，第一次调用的时候，需要预热
-		if (!hasPreHeatStatus(serviceName)) {
-			// 第一次调用的时候，需要查看consumer link provider的channel is ready
-			ConectionPreHeater conectionPreHeater = new ConectionPreHeater(serviceName, timeout);
-			conectionPreHeater.getPreHeatReady();
-			preHeatStatusMap.put(serviceName, Boolean.TRUE);
-		}
 
 		if (null == serviceName || serviceName.length() == 0) {
 			throw new NoServiceException("调用的服务名不能为空");
@@ -52,8 +48,13 @@ public class ConsumerClient extends DefaultConsumer {
 		body.setArgs(args);
 		body.setServiceName(serviceName);
 		RemotingTransporter request = RemotingTransporter.createRequestTransporter(LaopopoProtocol.RPC_REQUEST, body);
-		DefaultResultPromise defaultResultPromise = new DefaultDispatcher().dispatcher(channelGroup.next(), request, timeout);
-		return defaultResultPromise.getResult();
+		RemotingTransporter response = sendRpcRequestToProvider(channelGroup.next(),request);
+		ResponseCustomBody customBody = serializerImpl().readObject(response.bytes(), ResponseCustomBody.class);
+		return customBody.getResultWrapper().getResult();
+	}
+
+	private RemotingTransporter sendRpcRequestToProvider(Channel channel, RemotingTransporter request) throws RemotingTimeoutException, RemotingSendRequestException, InterruptedException {
+		return super.providerNettyRemotingClient.invokeSyncImpl(channel, request, 3000l);
 	}
 
 	private ChannelGroup getAllMatchedChannel(String serviceName) {
@@ -104,11 +105,5 @@ public class ConsumerClient extends DefaultConsumer {
 		return channelGroup.getWeight();
 	}
 
-	private boolean hasPreHeatStatus(String serviceName) {
-
-		Boolean hasPreHeated = preHeatStatusMap.get(serviceName);
-
-		return hasPreHeated == null ? false : hasPreHeated.booleanValue();
-	}
 
 }

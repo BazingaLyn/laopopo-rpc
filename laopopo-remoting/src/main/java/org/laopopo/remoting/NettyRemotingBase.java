@@ -9,7 +9,6 @@ import io.netty.channel.ChannelHandlerContext;
 
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -143,7 +142,11 @@ public abstract class NettyRemotingBase {
 
 				@Override
 				public void run() {
-					pair.getKey().processChannelInactive(ctx);
+					try {
+						pair.getKey().processChannelInactive(ctx);
+					} catch (RemotingSendRequestException | RemotingTimeoutException | InterruptedException e) {
+						logger.error("server occor exception [{}]",e.getMessage());
+					}
 				}
 			 };
 			 try {

@@ -61,19 +61,39 @@ public class RegistryController {
 			for (String eachAddress : addresses) {
 				
 				for (RemotingTransporter request : transporters) {
+					
+					pushPublishServiceToRegistry(request,eachAddress);
 
-					logger.info("[{}] transporters matched", request);
-					messagesNonAcks.put(request.getOpaque(), new MessageNonAck(request, eachAddress));
-					RemotingTransporter remotingTransporter = defaultProvider.getNettyRemotingClient().invokeSync(eachAddress, request, 3000);
-					AckCustomBody ackCustomBody = serializerImpl().readObject(remotingTransporter.bytes(), AckCustomBody.class);
-
-					logger.info("received ack info [{}]", ackCustomBody);
-					messagesNonAcks.remove(ackCustomBody.getRequestId());
 				}
 			}
 		}
-
 	}
+	
+	private void pushPublishServiceToRegistry(RemotingTransporter request, String eachAddress) throws InterruptedException, RemotingException {
+		logger.info("[{}] transporters matched", request);
+		messagesNonAcks.put(request.getOpaque(), new MessageNonAck(request, eachAddress));
+		RemotingTransporter remotingTransporter = defaultProvider.getNettyRemotingClient().invokeSync(eachAddress, request, 3000);
+		if(null != remotingTransporter){
+			AckCustomBody ackCustomBody = serializerImpl().readObject(remotingTransporter.bytes(), AckCustomBody.class);
+
+			logger.info("received ack info [{}]", ackCustomBody);
+			if(ackCustomBody.isSuccess()){
+				messagesNonAcks.remove(ackCustomBody.getRequestId());
+			}
+		}else{
+			logger.warn("registry center handler timeout");
+		}
+	}
+
+	public void checkPublishFailMessage() throws InterruptedException, RemotingException{
+		if(messagesNonAcks.keySet() != null && messagesNonAcks.keySet().size() > 0){
+			logger.warn("have [{}] message send failed,send again",messagesNonAcks.keySet().size());
+			for(MessageNonAck ack : messagesNonAcks.values()){
+				pushPublishServiceToRegistry(ack.getMsg(), ack.getAddress());
+			}
+		}
+	}
+	
 
 	static class MessageNonAck {
 

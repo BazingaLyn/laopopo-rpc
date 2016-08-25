@@ -16,7 +16,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import org.laopopo.client.preheater.ConectionPreHeater;
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.transport.body.AckCustomBody;
 import org.laopopo.common.transport.body.SubcribeResultCustomBody;
@@ -69,13 +68,12 @@ public class ConsumerManager {
 		if (subcribeResultCustomBody != null && subcribeResultCustomBody.getServiceInfos() != null && !subcribeResultCustomBody.getServiceInfos().isEmpty()) {
 
 			for (ServiceInfo serivceInfo : subcribeResultCustomBody.getServiceInfos()) {
+				
 				if(null == serviceName){
 					serviceName = serivceInfo.getServiceProviderName();
 				}
 				notify(serviceName, serivceInfo,ServiceInfoState.CHILD_ADDED);
 			}
-			//到此为止，说明该服务的链路已经建立成功，该服务算预热成功，可以远程调用
-			ConectionPreHeater.finishPreConnection(serviceName);
 		}
 
 		ackCustomBody.setDesc(ACK_SUBCRIBE_SERVICE_SUCCESS);
@@ -191,11 +189,7 @@ public class ConsumerManager {
 			this.defaultConsumer.getProviderNettyRemotingClient().setreconnect(false);
 			ChannelFuture channelFuture = this.defaultConsumer.getProviderNettyRemotingClient().getBootstrap()
 					.connect(ConnectionUtils.string2SocketAddress(remoteHost + ":" + remotePort));
-			if (channelFuture.isSuccess()) {
-				return channelFuture.channel();
-			} else {
-				return null;
-			}
+			return channelFuture.channel();
 		} catch (Exception e) {
 			logger.error("connection provider host [{}] and port [{}] occor exception [{}]", remoteHost, remotePort, e.getMessage());
 			return null;

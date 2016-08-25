@@ -11,7 +11,7 @@ import org.laopopo.remoting.netty.NettyClientConfig;
  */
 public class DefaultConsumerTest_1 {
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Throwable {
 		
 		NettyClientConfig registryNettyClientConfig = new NettyClientConfig();
 		registryNettyClientConfig.setDefaultAddress("127.0.0.1:18010");
@@ -24,7 +24,12 @@ public class DefaultConsumerTest_1 {
 		
 		client.subcribeService("LAOPOPO.TEST.SAYHELLO");
 		
-//		client.call("", args)
+		Thread.sleep(1000l);
+		
+		Object obj = client.call("LAOPOPO.TEST.SAYHELLO", "shine");
+		if(obj instanceof String){
+			System.out.println((String)obj);
+		}
 		
 	}
 

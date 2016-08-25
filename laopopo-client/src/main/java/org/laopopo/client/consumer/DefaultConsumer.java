@@ -25,9 +25,9 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 
 	private ConsumerConfig consumerConfig;
 
-	private NettyRemotingClient registryNettyRemotingClient;
+	protected NettyRemotingClient registryNettyRemotingClient;
 
-	private NettyRemotingClient providerNettyRemotingClient;
+	protected NettyRemotingClient providerNettyRemotingClient;
 
 	private DefaultConsumerRegistry defaultConsumerRegistry;
 	
@@ -69,6 +69,7 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 	@Override
 	public void start() {
 		this.registryNettyRemotingClient.start();
+		this.providerNettyRemotingClient.start();
 		getOrUpdateHealthyChannel();
 	}
 

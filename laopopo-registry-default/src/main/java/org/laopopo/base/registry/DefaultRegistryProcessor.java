@@ -2,9 +2,8 @@ package org.laopopo.base.registry;
 
 import static org.laopopo.common.protocal.LaopopoProtocol.PUBLISH_CANCEL_SERVICE;
 import static org.laopopo.common.protocal.LaopopoProtocol.PUBLISH_SERVICE;
-import static org.laopopo.common.protocal.LaopopoProtocol.SUBSCRIBE_SERVICE;
 import static org.laopopo.common.protocal.LaopopoProtocol.REVIEW_SERVICE;
-import static org.laopopo.common.protocal.LaopopoProtocol.ACK;
+import static org.laopopo.common.protocal.LaopopoProtocol.SUBSCRIBE_SERVICE;
 import io.netty.channel.ChannelHandlerContext;
 
 import org.laopopo.remoting.ConnectionUtils;

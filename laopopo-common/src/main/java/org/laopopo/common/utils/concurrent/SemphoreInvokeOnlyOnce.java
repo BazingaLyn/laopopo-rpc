@@ -1,6 +1,5 @@
 package org.laopopo.common.utils.concurrent;
 
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 
@@ -11,6 +10,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class SemphoreInvokeOnlyOnce {
 	
-	private final AtomicBoolean invoker = new AtomicBoolean(false);
+//	private final AtomicBoolean invoker = new AtomicBoolean(false);
 
 }

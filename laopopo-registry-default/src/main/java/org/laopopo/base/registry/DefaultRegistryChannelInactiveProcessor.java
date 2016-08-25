@@ -5,6 +5,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.AttributeKey;
 import io.netty.util.internal.ConcurrentSet;
 
+import org.laopopo.common.exception.remoting.RemotingSendRequestException;
+import org.laopopo.common.exception.remoting.RemotingTimeoutException;
 import org.laopopo.registry.model.RegisterMeta;
 import org.laopopo.registry.model.RegisterMeta.Address;
 import org.laopopo.remoting.model.NettyChannelInactiveProcessor;
@@ -31,7 +33,7 @@ public class DefaultRegistryChannelInactiveProcessor implements NettyChannelInac
 	}
 
 	@Override
-	public void processChannelInactive(ChannelHandlerContext ctx) {
+	public void processChannelInactive(ChannelHandlerContext ctx) throws RemotingSendRequestException, RemotingTimeoutException, InterruptedException {
 		//获取到当前的channel，此时的channel应该是打过记号的
 		Channel channel = ctx.channel();
 		
@@ -40,6 +42,7 @@ public class DefaultRegistryChannelInactiveProcessor implements NettyChannelInac
         
         //如果该channel打过的记号是空，或者是空集合的话，直接返回
         if (registerMetaSet == null || registerMetaSet.isEmpty()) {
+        	logger.debug("registerMetaSet is empty");
             return;
         }
         //接下来需要做两件事情

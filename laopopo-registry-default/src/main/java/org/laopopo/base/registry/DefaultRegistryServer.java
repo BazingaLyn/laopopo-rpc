@@ -3,12 +3,14 @@ package org.laopopo.base.registry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.laopopo.common.utils.NamedThreadFactory;
 import org.laopopo.registry.RegistryServer;
-import org.laopopo.remoting.netty.NettyClientConfig;
 import org.laopopo.remoting.netty.NettyRemotingServer;
 import org.laopopo.remoting.netty.NettyServerConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 
@@ -26,6 +28,8 @@ import org.laopopo.remoting.netty.NettyServerConfig;
  * @modifytime
  */
 public class DefaultRegistryServer implements RegistryServer {
+	
+	private static final Logger logger = LoggerFactory.getLogger(DefaultRegistryServer.class);
 	
 	//netty Server的一些配置文件
     private final NettyServerConfig nettyServerConfig;
@@ -69,6 +73,19 @@ public class DefaultRegistryServer implements RegistryServer {
 		 
 		 //注册处理器
 		 this.registerProcessor();
+		 
+		 this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
+
+				@Override
+				public void run() {
+					// 延迟60秒，每隔60秒开始 定时向consumer发送消费者消费失败的信息
+					try {
+						DefaultRegistryServer.this.getConsumerManager().checkSendFailedMessage();
+					} catch (Exception e) {
+						logger.warn("schedule publish failed [{}]",e.getMessage());
+					} 
+				}
+			}, 60, 60, TimeUnit.SECONDS);
 	}
 
 	private void registerProcessor() {

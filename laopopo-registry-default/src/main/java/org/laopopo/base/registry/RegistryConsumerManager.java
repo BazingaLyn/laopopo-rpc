@@ -2,7 +2,6 @@ package org.laopopo.base.registry;
 
 import io.netty.channel.Channel;
 import io.netty.channel.group.ChannelGroup;
-import io.netty.channel.group.ChannelMatcher;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.GlobalEventExecutor;
@@ -14,6 +13,7 @@ import java.util.List;
 import org.laopopo.common.exception.remoting.RemotingSendRequestException;
 import org.laopopo.common.exception.remoting.RemotingTimeoutException;
 import org.laopopo.common.protocal.LaopopoProtocol;
+import org.laopopo.common.transport.body.AckCustomBody;
 import org.laopopo.common.transport.body.SubcribeResultCustomBody;
 import org.laopopo.common.transport.body.SubcribeResultCustomBody.ServiceInfo;
 import org.laopopo.registry.model.RegisterMeta;
@@ -37,7 +37,9 @@ public class RegistryConsumerManager {
 
 	private static final AttributeKey<ConcurrentSet<String>> S_SUBSCRIBE_KEY = AttributeKey.valueOf("server.subscribed");
 
-	private final ChannelGroup subscriberChannels = new DefaultChannelGroup("subscribers", GlobalEventExecutor.INSTANCE);
+	private volatile ChannelGroup subscriberChannels = new DefaultChannelGroup("subscribers", GlobalEventExecutor.INSTANCE);
+
+	private final ConcurrentSet<MessageNonAck> messagesNonAcks = new ConcurrentSet<MessageNonAck>();
 
 	public RegistryConsumerManager(DefaultRegistryServer defaultRegistryServer) {
 		this.defaultRegistryServer = defaultRegistryServer;
@@ -51,7 +53,7 @@ public class RegistryConsumerManager {
 	 * 通知consumer该地址的所有服务都下线
 	 * 
 	 * @param address
-	 *            
+	 * 
 	 */
 	public void handleOfflineNotice(Address address) {
 
@@ -61,66 +63,58 @@ public class RegistryConsumerManager {
 	 * 通知相关的订阅者服务的信息
 	 * 
 	 * @param meta
-	 * @throws InterruptedException 
-	 * @throws RemotingTimeoutException 
-	 * @throws RemotingSendRequestException 
+	 * @throws InterruptedException
+	 * @throws RemotingTimeoutException
+	 * @throws RemotingSendRequestException
 	 */
 	public void notifyMacthedSubscriber(final RegisterMeta meta) throws RemotingSendRequestException, RemotingTimeoutException, InterruptedException {
-		
+
 		// 构建订阅通知的主体传输对象
 		SubcribeResultCustomBody subcribeResultCustomBody = new SubcribeResultCustomBody();
-		buildSubcribeResultCustomBody(meta,subcribeResultCustomBody);
+		buildSubcribeResultCustomBody(meta, subcribeResultCustomBody);
 
 		// 传送给consumer对象的RemotingTransporter
 		RemotingTransporter sendConsumerRemotingTrasnporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.SUBCRIBE_RESULT,
 				subcribeResultCustomBody);
 
-		// 所有的订阅者的channel集合
-		if(!subscriberChannels.isEmpty()){
-			for(Channel channel :subscriberChannels){
-				if(isChannelSubscribeOnServiceMeta(meta.getServiceName(), channel)){
-					RemotingTransporter remotingTransporter = this.defaultRegistryServer.getRemotingServer().invokeSync(channel, sendConsumerRemotingTrasnporter, 3000l);
-				    if(remotingTransporter == null){
-				    	//超时重发
-				    }
-				}
-			}
-		}
+		pushMessageToConsumer(sendConsumerRemotingTrasnporter, meta.getServiceName());
+
 	}
 
+	public void notifyMacthedSubscriberCancel(final RegisterMeta meta) throws RemotingSendRequestException, RemotingTimeoutException, InterruptedException {
 
-	public void notifyMacthedSubscriberCancel(final RegisterMeta meta) {
-		
 		// 构建订阅通知的主体传输对象
 		SubcribeResultCustomBody subcribeResultCustomBody = new SubcribeResultCustomBody();
-		buildSubcribeResultCustomBody(meta,subcribeResultCustomBody);
-		
+		buildSubcribeResultCustomBody(meta, subcribeResultCustomBody);
+
 		RemotingTransporter sendConsumerRemotingTrasnporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.SUBCRIBE_SERVICE_CANCEL,
 				subcribeResultCustomBody);
 		
-		// 所有的订阅者的channel集合
-		if(!subscriberChannels.isEmpty()){
-			
-		}
-		subscriberChannels.writeAndFlush(sendConsumerRemotingTrasnporter, new ChannelMatcher() {
-
-			@Override
-			public boolean matches(Channel channel) {
-				//
-				boolean doSend = isChannelSubscribeOnServiceMeta(meta.getServiceName(), channel);
-				// TODO
-				// if (doSend) {
-				// MessageNonAck msgNonAck = new
-				// MessageNonAck(serviceMeta, msg, channel);
-				// // 收到ack后会移除当前key(参见handleAcknowledge), 否则超时超时重发
-				// messagesNonAck.put(msgNonAck.id, msgNonAck);
-				// }
-				return doSend;
-			}
-
-		});
+		pushMessageToConsumer(sendConsumerRemotingTrasnporter, meta.getServiceName());
 
 	}
+	
+	
+	
+	/**
+	 * 检查messagesNonAcks中是否有发送失败的信息，然后再次发送
+	 */
+	public void checkSendFailedMessage(){
+		ConcurrentSet<MessageNonAck> nonAcks = messagesNonAcks;
+		messagesNonAcks.clear();
+		if(nonAcks != null){
+			for(MessageNonAck messageNonAck:nonAcks){
+				try {
+					pushMessageToConsumer(messageNonAck.getMsg(), messageNonAck.getServiceName());
+				} catch (Exception e) {
+					logger.error("send message failed");
+				} 
+			}
+		}
+		nonAcks = null; //help GC
+	}
+	
+	/***************************分隔符，上面为对外方法*****************************************************/
 
 	/**
 	 * 因为在consumer订阅服务的时候，就会在其channel上绑定其订阅的信息
@@ -134,25 +128,87 @@ public class RegistryConsumerManager {
 
 		return serviceMetaSet != null && serviceMetaSet.contains(serviceName);
 	}
-	
+
 	/**
 	 * 构建返回给consumer的返回主体对象
+	 * 
 	 * @param meta
 	 * @param subcribeResultCustomBody
 	 */
 	private void buildSubcribeResultCustomBody(RegisterMeta meta, SubcribeResultCustomBody subcribeResultCustomBody) {
-		List<ServiceInfo> serviceInfos = new ArrayList<ServiceInfo>();	
-		
-		ServiceInfo  info = new ServiceInfo(meta.getAddress().getHost(), // 服务的提供地址
+		List<ServiceInfo> serviceInfos = new ArrayList<ServiceInfo>();
+
+		ServiceInfo info = new ServiceInfo(meta.getAddress().getHost(), // 服务的提供地址
 				meta.getAddress().getPort(), // 服务提供端口
-				meta.getServiceName(),
-				meta.isVIPService(),
-				meta.getWeight(),
-				meta.getConnCount()); // 是否为VIP服务 如果是，consumer调用的时候就会port-2 连接调用
+				meta.getServiceName(), meta.isVIPService(), meta.getWeight(), meta.getConnCount()); // 是否为VIP服务
+																									// 如果是，consumer调用的时候就会port-2
+																									// 连接调用
 		serviceInfos.add(info);
 		subcribeResultCustomBody.setServiceInfos(serviceInfos);
 	}
 
+	private void pushMessageToConsumer(RemotingTransporter sendConsumerRemotingTrasnporter, String serviceName) throws RemotingSendRequestException,
+			RemotingTimeoutException, InterruptedException {
+		// 所有的订阅者的channel集合
+		if (!subscriberChannels.isEmpty()) {
+			for (Channel channel : subscriberChannels) {
+				if (isChannelSubscribeOnServiceMeta(serviceName, channel)) {
+					RemotingTransporter remotingTransporter = this.defaultRegistryServer.getRemotingServer().invokeSync(channel,
+							sendConsumerRemotingTrasnporter, 3000l);
+					// 如果是ack返回是null说明是超时了，需要重新发送
+					if (remotingTransporter == null) {
+						logger.warn("push consumer message time out,need send again");
+						MessageNonAck msgNonAck = new MessageNonAck(remotingTransporter, channel,serviceName);
+						messagesNonAcks.add(msgNonAck);
+					}
+					// 如果消费者端消费者消费失败
+					AckCustomBody ackCustomBody = (AckCustomBody) remotingTransporter.getCustomHeader();
+					if (!ackCustomBody.isSuccess()) {
+						logger.warn("consumer fail handler this message");
+						MessageNonAck msgNonAck = new MessageNonAck(remotingTransporter, channel,serviceName);
+						messagesNonAcks.add(msgNonAck);
+					}
+				}
+			}
+		}
+	}
 	
+	
+	
+	static class MessageNonAck {
+
+		private final long id;
+
+		private final String serviceName;
+		private final RemotingTransporter msg;
+		private final Channel channel;
+
+		public MessageNonAck(RemotingTransporter msg, Channel channel,String serviceName) {
+			this.msg = msg;
+			this.channel = channel;
+			this.serviceName = serviceName;
+
+			id = msg.getOpaque();
+		}
+
+		public long getId() {
+			return id;
+		}
+
+		public RemotingTransporter getMsg() {
+			return msg;
+		}
+
+		public Channel getChannel() {
+			return channel;
+		}
+
+		public String getServiceName() {
+			return serviceName;
+		}
+		
+		
+
+	}
 
 }
