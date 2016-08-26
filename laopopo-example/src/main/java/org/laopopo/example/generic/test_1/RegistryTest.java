@@ -1,25 +1,19 @@
-package org.laopopo.base.registry;
+package org.laopopo.example.generic.test_1;
 
 import io.netty.util.internal.ConcurrentSet;
 
 import java.util.concurrent.ConcurrentMap;
 
+import org.laopopo.base.registry.DefaultRegistryServer;
 import org.laopopo.common.rpc.RegisterMeta;
 import org.laopopo.common.rpc.RegisterMeta.Address;
 import org.laopopo.remoting.netty.NettyServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * 
- * @author BazingaLyn
- * @description 
- * @time
- * @modifytime
- */
-public class RegistryTest_1 {
+public class RegistryTest {
 	
-	private static final Logger logger = LoggerFactory.getLogger(RegistryTest_1.class);
+	private static final Logger logger = LoggerFactory.getLogger(RegistryTest.class);
 	
 	private static DefaultRegistryServer defaultRegistryServer;
 	

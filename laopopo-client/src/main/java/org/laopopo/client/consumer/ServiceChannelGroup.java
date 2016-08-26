@@ -9,7 +9,7 @@ import org.laopopo.common.utils.ChannelGroup;
 
 public class ServiceChannelGroup {
 	
-	private static final ConcurrentMap<String, CopyOnWriteArrayList<ChannelGroup>> groups = new ConcurrentHashMap<String, CopyOnWriteArrayList<ChannelGroup>>();
+	private volatile static  ConcurrentMap<String, CopyOnWriteArrayList<ChannelGroup>> groups = new ConcurrentHashMap<String, CopyOnWriteArrayList<ChannelGroup>>();
 	
 
 	public static void addIfAbsent(String serviceName, ChannelGroup group) {
@@ -36,6 +36,10 @@ public class ServiceChannelGroup {
 	
 	public static CopyOnWriteArrayList<ChannelGroup> getChannelGroupByServiceName(String service){
 		return groups.get(service);
+	}
+
+	public static ConcurrentMap<String, CopyOnWriteArrayList<ChannelGroup>> getGroups() {
+		return groups;
 	}
 	
 	

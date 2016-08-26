@@ -12,8 +12,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.laopopo.client.consumer.NotifyListener.NotifyEvent;
 import org.laopopo.common.protocal.LaopopoProtocol;
+import org.laopopo.common.rpc.RegisterMeta;
 import org.laopopo.common.utils.ChannelGroup;
 import org.laopopo.common.utils.JUnsafe;
 import org.laopopo.common.utils.NettyChannelGroup;
@@ -90,33 +90,34 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 				subcribeService(service, new NotifyListener() {
 					
 					@Override
-					public void notify(String serviceName, NotifyEvent event) {
+					public void notify(RegisterMeta registerMeta, NotifyEvent event) {
 
 						// host
-						String remoteHost = serivceInfo.getHost();
+						String remoteHost = registerMeta.getAddress().getHost();
 						// port vip服务 port端口号-2
-						int remotePort = serivceInfo.isVIPService() ? (serivceInfo.getPort() - 2) : serivceInfo.getPort();
+						int remotePort = registerMeta.isVIPService() ? (registerMeta.getAddress().getPort() - 2) : registerMeta.getAddress().getPort();
 
 						final ChannelGroup group = group(new UnresolvedAddress(remoteHost, remotePort));
 						if (event == NotifyEvent.CHILD_ADDED) {
 							// 链路复用，如果此host和port对应的链接的channelGroup是已经存在的，则无需建立新的链接，只需要将此group与service建立关系即可
 							if (!group.isAvailable()) {
 
-								int connCount = serivceInfo.getConnCount() < 0 ? 1 : serivceInfo.getConnCount();
+								int connCount = registerMeta.getConnCount() < 0 ? 1 : registerMeta.getConnCount();
 
-								group.setWeight(serivceInfo.getWeight());
+								group.setWeight(registerMeta.getWeight());
 
 								for (int i = 0; i < connCount; i++) {
 
 									try {
 										// 所有的consumer与provider之间的链接不进行短线重连操作
-										this.defaultConsumer.getProviderNettyRemotingClient().setreconnect(false);
-										this.defaultConsumer.getProviderNettyRemotingClient().getBootstrap()
+										DefaultConsumer.this.getProviderNettyRemotingClient().setreconnect(false);
+										DefaultConsumer.this.getProviderNettyRemotingClient().getBootstrap()
 												.connect(ConnectionUtils.string2SocketAddress(remoteHost + ":" + remotePort)).addListener(new ChannelFutureListener() {
 
 													@Override
 													public void operationComplete(ChannelFuture future) throws Exception {
 														group.add(future.channel());
+														onSucceed(signalNeeded.getAndSet(false));
 													}
 													
 												});
@@ -124,20 +125,22 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 										logger.error("connection provider host [{}] and port [{}] occor exception [{}]", remoteHost, remotePort, e.getMessage());
 									}
 								}
-								ServiceChannelGroup.addIfAbsent(serviceName,group);
+							}else{
+								onSucceed(signalNeeded.getAndSet(false));
 							}
+							ServiceChannelGroup.addIfAbsent(service,group);
 						}else if(event == NotifyEvent.CHILD_REMOVED){
-							ServiceChannelGroup.removedIfAbsent(serviceName, group);
-							//TODO 这边如果此channel只被一个服务使用，那么此时应该最好是关闭channel
+							ServiceChannelGroup.removedIfAbsent(service, group);
 						}
 					}
 				});
-				onSucceed(signalNeeded.getAndSet(false));
 			}
 
 			@Override
 			public boolean waitForAvailable(long timeoutMillis) {
+				System.out.println(service +" GGGGGGGGG");
 				if (isServiceAvailable(service)) {
+					System.out.println(service +" is ready");
                     return true;
                 }
 				boolean available = false;
@@ -164,7 +167,16 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 
 			private boolean isServiceAvailable(String service) {
 				CopyOnWriteArrayList<ChannelGroup> list = ServiceChannelGroup.getChannelGroupByServiceName(service);
-				return list == null ? false :list.size() > 0 ? true : false;
+				if(list == null){
+					return false;
+				}else{
+					for(ChannelGroup channelGroup : list){
+						if(channelGroup.isAvailable()){
+							return true;
+						}
+					}
+				}
+				return false;
 			}
 
 			private void onSucceed(boolean doSignal) {
@@ -200,6 +212,7 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 	@Override
 	public void start() {
 		this.registryNettyRemotingClient.start();
+		this.providerNettyRemotingClient.setreconnect(false);
 		this.providerNettyRemotingClient.start();
 		getOrUpdateHealthyChannel();
 	}

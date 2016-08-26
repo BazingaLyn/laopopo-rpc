@@ -92,4 +92,10 @@ public class NettyChannelGroup implements ChannelGroup {
 		return channels.size() > 0 ? true :  false;
 	}
 
+	@Override
+	public String toString() {
+		return "NettyChannelGroup [channels=" + channels + ", index=" + index + ", address=" + address + ", weight=" + weight + ", remover=" + remover + "]";
+	}
+	
+
 }

@@ -2,7 +2,6 @@ package org.laopopo.client.consumer;
 
 import static org.laopopo.common.protocal.LaopopoProtocol.SUBCRIBE_RESULT;
 import static org.laopopo.common.protocal.LaopopoProtocol.SUBCRIBE_SERVICE_CANCEL;
-import static org.laopopo.common.protocal.LaopopoProtocol.OFFLINE_ADDRESS;
 import io.netty.channel.ChannelHandlerContext;
 
 import org.laopopo.remoting.ConnectionUtils;
@@ -45,9 +44,6 @@ public class DefaultConsumerRegistryProcessor implements NettyRequestProcessor {
 		case SUBCRIBE_SERVICE_CANCEL:
 			// 回复ack信息
 			return this.defaultConsumer.getConsumerManager().handlerSubscribeResultCancel(request, ctx.channel());
-		case OFFLINE_ADDRESS:
-			// 回复ack信息
-			return this.defaultConsumer.getConsumerManager().handlerOffline(request, ctx.channel());
 		}
 
 		return null;

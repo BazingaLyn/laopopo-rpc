@@ -14,10 +14,8 @@ import org.laopopo.common.exception.remoting.RemotingSendRequestException;
 import org.laopopo.common.exception.remoting.RemotingTimeoutException;
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.rpc.RegisterMeta;
-import org.laopopo.common.rpc.RegisterMeta.Address;
 import org.laopopo.common.transport.body.AckCustomBody;
 import org.laopopo.common.transport.body.SubcribeResultCustomBody;
-import org.laopopo.common.transport.body.SubcribeResultCustomBody.ServiceInfo;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,16 +45,6 @@ public class RegistryConsumerManager {
 
 	public ChannelGroup getSubscriberChannels() {
 		return subscriberChannels;
-	}
-
-	/**
-	 * 通知consumer该地址的所有服务都下线
-	 * 
-	 * @param address
-	 * 
-	 */
-	public void handleOfflineNotice(Address address) {
-
 	}
 
 	/**
@@ -136,15 +124,10 @@ public class RegistryConsumerManager {
 	 * @param subcribeResultCustomBody
 	 */
 	private void buildSubcribeResultCustomBody(RegisterMeta meta, SubcribeResultCustomBody subcribeResultCustomBody) {
-		List<ServiceInfo> serviceInfos = new ArrayList<ServiceInfo>();
+		List<RegisterMeta> registerMetas = new ArrayList<RegisterMeta>();
 
-		ServiceInfo info = new ServiceInfo(meta.getAddress().getHost(), // 服务的提供地址
-				meta.getAddress().getPort(), // 服务提供端口
-				meta.getServiceName(), meta.isVIPService(), meta.getWeight(), meta.getConnCount()); // 是否为VIP服务
-																									// 如果是，consumer调用的时候就会port-2
-																									// 连接调用
-		serviceInfos.add(info);
-		subcribeResultCustomBody.setServiceInfos(serviceInfos);
+		registerMetas.add(meta);
+		subcribeResultCustomBody.setRegisterMeta(registerMetas);
 	}
 
 	private void pushMessageToConsumer(RemotingTransporter sendConsumerRemotingTrasnporter, String serviceName) throws RemotingSendRequestException,

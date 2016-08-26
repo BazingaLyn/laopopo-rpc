@@ -1,4 +1,4 @@
-package org.laopopo.client.provider;
+package org.laopopo.example.demo.service;
 
 public interface ByeService {
 	

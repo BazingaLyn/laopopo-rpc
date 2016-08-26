@@ -1,4 +1,4 @@
-package org.laopopo.client.provider;
+package org.laopopo.example.demo.service;
 
 import org.laopopo.client.annotation.RPCService;
 

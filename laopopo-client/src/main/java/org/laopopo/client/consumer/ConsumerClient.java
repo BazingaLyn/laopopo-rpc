@@ -40,6 +40,8 @@ public class ConsumerClient extends DefaultConsumer {
 		}
 		ChannelGroup channelGroup = getAllMatchedChannel(serviceName);
 		if (channelGroup == null || channelGroup.size() == 0) {
+			System.out.println(channelGroup);
+			System.out.println(channelGroup.size());
 			throw new NoServiceException("没有第三方提供该服务，请检查服务名");
 		}
 

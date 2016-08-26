@@ -25,7 +25,6 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -140,7 +139,6 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 						watchdog.handlers());
 			}
 		});
-		logger.info("init client netty over");
 	}
 
 	@Override

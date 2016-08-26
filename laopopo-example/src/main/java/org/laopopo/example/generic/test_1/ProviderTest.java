@@ -1,16 +1,19 @@
-package org.laopopo.client.provider;
+package org.laopopo.example.generic.test_1;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.laopopo.client.provider.DefaultProvider;
 import org.laopopo.client.provider.flow.control.ControlResult;
 import org.laopopo.client.provider.flow.control.FlowController;
 import org.laopopo.common.exception.remoting.RemotingException;
+import org.laopopo.example.demo.service.ByeServiceImpl;
+import org.laopopo.example.demo.service.HelloSerivceImpl;
 import org.laopopo.remoting.netty.NettyClientConfig;
 import org.laopopo.remoting.netty.NettyServerConfig;
 
 public class ProviderTest {
 	
-	public static void main(String[] args) throws InterruptedException, RemotingException {
+public static void main(String[] args) throws InterruptedException, RemotingException {
 		
 		DefaultProvider defaultProvider = new DefaultProvider(new NettyClientConfig(), new NettyServerConfig());
 		

@@ -26,7 +26,6 @@ import org.laopopo.common.transport.body.AckCustomBody;
 import org.laopopo.common.transport.body.PublishServiceCustomBody;
 import org.laopopo.common.transport.body.SubcribeRequestCustomBody;
 import org.laopopo.common.transport.body.SubcribeResultCustomBody;
-import org.laopopo.common.transport.body.SubcribeResultCustomBody.ServiceInfo;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -159,21 +158,21 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		RemotingTransporter responseTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.SUBCRIBE_RESULT, subcribeResultCustomBody, request.getOpaque());
 		//接收到主体信息
 		SubcribeRequestCustomBody requestCustomBody = serializerImpl().readObject(request.bytes(), SubcribeRequestCustomBody.class);
-		String serviceMeta = requestCustomBody.getServiceName();
+		String serviceName = requestCustomBody.getServiceName();
 		//将其降入到channel的group中去
 		this.defaultRegistryServer.getConsumerManager().getSubscriberChannels().add(channel);
 		
 		//存入到消费者中全局变量中去 TODO is need?
-		ConcurrentSet<Channel> channels = globalConsumerMetaMap.get(serviceMeta);
+		ConcurrentSet<Channel> channels = globalConsumerMetaMap.get(serviceName);
 		if(null == channels){
 			channels = new ConcurrentSet<Channel>();
 		}
 		channels.add(channel);
 		
 		
-		attachSubscribeEventOnChannel(serviceMeta, channel);
+		attachSubscribeEventOnChannel(serviceName, channel);
 		
-		ConcurrentMap<Address, RegisterMeta> maps = this.getRegisterMeta(serviceMeta);
+		ConcurrentMap<Address, RegisterMeta> maps = this.getRegisterMeta(serviceName);
 		//如果订阅的暂时还没有服务提供者，则返回空列表给订阅者
         if (maps.isEmpty()) {
         	return responseTransporter;
@@ -303,15 +302,14 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		Collection<RegisterMeta> values = maps.values();
 		
 		if(values != null && values.size() > 0){
-			List<ServiceInfo> serviceInfos = new ArrayList<ServiceInfo>();
+			List<RegisterMeta> registerMetas = new ArrayList<RegisterMeta>();
 			for(RegisterMeta meta : values){
 				//判断是否人工审核过，审核过的情况下，组装给consumer的响应主体，返回个consumer
 				if(meta.getIsReviewed() == ServiceReviewState.PASS_REVIEW){
-					ServiceInfo serviceInfo = new ServiceInfo(meta.getAddress().getHost(), meta.getAddress().getPort(), meta.getServiceName(), meta.isVIPService(),meta.getWeight(),meta.getConnCount());
-					serviceInfos.add(serviceInfo);
+					registerMetas.add(meta);
 				}
 			}
-			subcribeResultCustomBody.setServiceInfos(serviceInfos);
+			subcribeResultCustomBody.setRegisterMeta(registerMetas);
 		}
 	}
 

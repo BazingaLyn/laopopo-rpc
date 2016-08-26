@@ -7,4 +7,4 @@
  * @time
  * @modifytime
  */
-package org.laopopo.client.consumer;
+package org.laopopo.common.rpc;
