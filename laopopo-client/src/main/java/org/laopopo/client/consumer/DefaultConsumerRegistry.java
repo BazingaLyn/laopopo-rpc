@@ -1,13 +1,13 @@
 package org.laopopo.client.consumer;
 
-import java.util.concurrent.ConcurrentHashMap;
-
 import io.netty.channel.Channel;
+
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.laopopo.common.exception.remoting.RemotingSendRequestException;
 import org.laopopo.common.exception.remoting.RemotingTimeoutException;
 import org.laopopo.common.protocal.LaopopoProtocol;
-import org.laopopo.common.transport.body.SubcribeRequestCustomBody;
+import org.laopopo.common.transport.body.SubscribeRequestCustomBody;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +48,7 @@ public class DefaultConsumerRegistry {
 
 			logger.info("registry center channel is [{}]", this.defaultConsumer.getRegistyChannel());
 
-			SubcribeRequestCustomBody body = new SubcribeRequestCustomBody();
+			SubscribeRequestCustomBody body = new SubscribeRequestCustomBody();
 			body.setServiceName(serviceName);
 
 			RemotingTransporter remotingTransporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.SUBSCRIBE_SERVICE, body);

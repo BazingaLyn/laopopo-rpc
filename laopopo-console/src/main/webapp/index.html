@@ -4,14 +4,54 @@
 <meta charset="UTF-8">
 <title>Laopopo-monitor</title>
 <script type="text/javascript" src="./resources/js/jquery-1.11.1.min.js"></script>
-<script type="text/javascript" src="./resources/js/controller.js"></script>
 <script type="text/javascript" src="./resources/js/bootstrap.js"></script>
 <script type="text/javascript" src="./resources/js/bootstrap-table.js"></script>
 <link rel="stylesheet" href="./resources/css/bootstrap.css">
 <link rel="stylesheet" href="./resources/css/bootstrap-table.css">
+<link rel="stylesheet" href="./resources/css/starter-template.css">
+<script type="text/javascript" src="./resources/js/controller.js"></script>
 </head>
 <body>
-<table class="table" id="monitorTable" >  
-</table> 
+ 
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">Project name</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li class="active"><a href="#">Home</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="#contact">Contact</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container">
+		<div class="starter-template">
+	
+			<table id="monitorTable">
+				<thead>
+					<tr>
+						<th>编号</th>
+						<th>区域类型</th>
+						<th>区域名称</th>
+						<th>包含城市（出发城市）</th>
+						<th>适用预订城市</th>
+						<th>备注</th>
+						<th>操作</th>
+					</tr>
+				</thead>
+			</table>
+		</div>
+	</div>
+
 </body>
 </html>

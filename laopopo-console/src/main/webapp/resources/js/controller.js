@@ -16,6 +16,8 @@ $(function() {
 						pageCount : 10,// 每页行数
 						pageIndex : 0,// 其实页
 						method : "get",// 请求格式
+						detailView:true,
+						detailFormatter:detailFormatter,
 						columns : [
 								{
 									field : 'regionalId',
@@ -154,6 +156,15 @@ $(function() {
 //	});
 
 });
+
+function detailFormatter(index, row) {
+    var html = [];
+    $.each(row, function (key, value) {
+        html.push('<p><b>' + key + ':</b> ' + value + '</p>');
+    });
+    return html.join('');
+}
+
 //默认加载时携带参数  
 function getParams(params) {
 	var searchKey = $("#searchKey").val();

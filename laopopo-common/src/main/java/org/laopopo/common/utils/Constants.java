@@ -32,4 +32,8 @@ public class Constants {
 	
 	public static final String ACK_PUBLISH_CANCEL_FAILURE = "取消发布服务失败";
 	
+	public static final String ACK_OPERATION_SUCCESS = "操作成功";
+	
+	public static final String ACK_OPERATION_FAILURE = "操作失败";
+	
 }

@@ -42,6 +42,10 @@ public class LaopopoProtocol {
   	public static final byte DEGRADE_SERVICE = 73;
   	
   	public static final byte RPC_RESPONSE = 74;
+  	
+  	public static final byte METRICS_SERVICE = 75;
+  	
+  	public static final byte CANCEL_DEGRADE_SERVICE = 76;
     
     //心跳
     public static final byte HEARTBEAT = 127;

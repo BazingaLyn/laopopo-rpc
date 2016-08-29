@@ -5,6 +5,8 @@ import static org.laopopo.common.utils.Constants.ACK_PUBLISH_CANCEL_FAILURE;
 import static org.laopopo.common.utils.Constants.ACK_PUBLISH_CANCEL_SUCCESS;
 import static org.laopopo.common.utils.Constants.ACK_PUBLISH_FAILURE;
 import static org.laopopo.common.utils.Constants.ACK_PUBLISH_SUCCESS;
+import static org.laopopo.common.utils.Constants.ACK_OPERATION_FAILURE;
+import static org.laopopo.common.utils.Constants.ACK_OPERATION_SUCCESS;
 import io.netty.channel.Channel;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
@@ -24,7 +26,8 @@ import org.laopopo.common.rpc.RegisterMeta.Address;
 import org.laopopo.common.rpc.ServiceReviewState;
 import org.laopopo.common.transport.body.AckCustomBody;
 import org.laopopo.common.transport.body.PublishServiceCustomBody;
-import org.laopopo.common.transport.body.SubcribeRequestCustomBody;
+import org.laopopo.common.transport.body.ReviewServiceCustomBody;
+import org.laopopo.common.transport.body.ServiceRequestCustomBody;
 import org.laopopo.common.transport.body.SubcribeResultCustomBody;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.slf4j.Logger;
@@ -55,6 +58,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 	
     private final ConcurrentMap<String, ConcurrentSet<Channel>> globalConsumerMetaMap = new ConcurrentHashMap<String, ConcurrentSet<Channel>>();
     
+    private final ConcurrentHashMap<Address, Channel> globalProviderChannelMetaMap = new ConcurrentHashMap<RegisterMeta.Address, Channel>();
     
     public RegistryProviderManager(DefaultRegistryServer defaultRegistryServer) {
 		this.defaultRegistryServer = defaultRegistryServer;
@@ -87,9 +91,9 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		attachPublishEventOnChannel(meta, channel);
 
 		//一个服务的最小单元，也是确定一个服务的最小单位
-		final String serviceMeta = meta.getServiceName();
+		final String serviceName = meta.getServiceName();
 		//找出提供此服务的全部地址和该服务在该地址下的审核情况
-		ConcurrentMap<Address, RegisterMeta> maps = this.getRegisterMeta(serviceMeta);
+		ConcurrentMap<Address, RegisterMeta> maps = this.getRegisterMeta(serviceName);
 		
 		synchronized (globalRegisterInfoMap) {
 			
@@ -102,7 +106,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 				maps.put(meta.getAddress(), existRegiserMeta);
 			}
 			
-			this.getServiceMeta(meta.getAddress()).add(serviceMeta);
+			this.getServiceMeta(meta.getAddress()).add(serviceName);
 			
 			//判断provider发送的信息已经被成功的存储的情况下，则告之服务注册成功
 			ackCustomBody.setDesc(ACK_PUBLISH_SUCCESS);
@@ -114,9 +118,43 @@ public class RegistryProviderManager implements RegistryProviderServer {
 			}
 		}
 		
+		globalProviderChannelMetaMap.put(meta.getAddress(), channel);
+		
 		return responseTransporter;
 	}
 	
+	
+	public RemotingTransporter handleDegradeService(RemotingTransporter request, Channel channel) throws RemotingSendRequestException, RemotingTimeoutException, InterruptedException {
+		
+		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false, ACK_OPERATION_FAILURE);
+		RemotingTransporter remotingTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, request.getOpaque());
+
+				
+		ReviewServiceCustomBody body = serializerImpl().readObject(request.bytes(), ReviewServiceCustomBody.class);
+		
+		String serviceName = body.getSerivceName();
+		ConcurrentMap<Address, RegisterMeta> maps = this.getRegisterMeta(serviceName);
+		
+		Address address = null;
+		
+		synchronized (globalRegisterInfoMap) {
+			
+			RegisterMeta existRegiserMeta = maps.get(body.getAddress());
+			if(null == existRegiserMeta){
+				return remotingTransporter;
+			}
+			if(existRegiserMeta.getIsReviewed() != ServiceReviewState.PASS_REVIEW){
+				return remotingTransporter;
+			}
+			
+			address = existRegiserMeta.getAddress();
+		}
+		
+		Channel matchedProviderChannel = globalProviderChannelMetaMap.get(address);
+		
+		return defaultRegistryServer.getRemotingServer().invokeSync(matchedProviderChannel, request, 3000l);
+	}
+
 	/**
 	 * provider端发送的请求，取消对某个服务的提供
 	 * @param request
@@ -143,6 +181,8 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		ackCustomBody.setDesc(ACK_PUBLISH_CANCEL_SUCCESS);
 		ackCustomBody.setSuccess(true);
 		
+		globalProviderChannelMetaMap.remove(meta.getAddress());
+		
 		return responseTransporter;
 	}
 	
@@ -157,7 +197,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		SubcribeResultCustomBody subcribeResultCustomBody = new SubcribeResultCustomBody();
 		RemotingTransporter responseTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.SUBCRIBE_RESULT, subcribeResultCustomBody, request.getOpaque());
 		//接收到主体信息
-		SubcribeRequestCustomBody requestCustomBody = serializerImpl().readObject(request.bytes(), SubcribeRequestCustomBody.class);
+		ServiceRequestCustomBody requestCustomBody = serializerImpl().readObject(request.bytes(), ServiceRequestCustomBody.class);
 		String serviceName = requestCustomBody.getServiceName();
 		//将其降入到channel的group中去
 		this.defaultRegistryServer.getConsumerManager().getSubscriberChannels().add(channel);
@@ -227,11 +267,35 @@ public class RegistryProviderManager implements RegistryProviderServer {
 	 */
 	public RemotingTransporter handleReview(RemotingTransporter request, Channel channel) {
 		
+		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false, ACK_OPERATION_FAILURE);
+		RemotingTransporter remotingTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, request.getOpaque());
+		
 		if (logger.isDebugEnabled()) {
 			logger.info("review service {} on channel{}.", request, channel);
 		}
 		
-		return null;
+		ReviewServiceCustomBody body = serializerImpl().readObject(request.bytes(), ReviewServiceCustomBody.class);
+		
+		//获取到这个服务的所有
+		ConcurrentMap<Address, RegisterMeta> maps = this.getRegisterMeta(body.getSerivceName());
+		
+		if (maps.isEmpty()) {
+			return remotingTransporter;
+		}
+		
+		synchronized (globalRegisterInfoMap) {
+			
+            RegisterMeta data = maps.get(body.getAddress());
+            
+            if (data != null) {
+            	ackCustomBody.setDesc(ACK_OPERATION_SUCCESS);
+            	ackCustomBody.setSuccess(true);
+            	data.setIsReviewed(body.getServiceReviewState());
+            }
+		}
+		
+		
+		return remotingTransporter;
 	}
 
 	
@@ -333,6 +397,5 @@ public class RegistryProviderManager implements RegistryProviderServer {
 	public ConcurrentMap<Address, ConcurrentSet<String>> getGlobalServiceMetaMap() {
 		return globalServiceMetaMap;
 	}
-
 
 }

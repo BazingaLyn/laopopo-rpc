@@ -101,7 +101,7 @@ public class ProviderRPCController {
 		
 		Object[] args = ((RequestCustomBody)request.getCustomHeader()).getArgs();
 		
-		if(currentServiceState.isHasDegrade() && serviceWrapper.getMockDegradeServiceProvider() != null){
+		if(currentServiceState.getHasDegrade().get() && serviceWrapper.getMockDegradeServiceProvider() != null){
 			targetCallObj = serviceWrapper.getMockDegradeServiceProvider();
 		}
 		

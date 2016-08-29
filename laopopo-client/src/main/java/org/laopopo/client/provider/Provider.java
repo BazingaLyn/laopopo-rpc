@@ -17,6 +17,7 @@ import org.laopopo.remoting.model.RemotingTransporter;
  * 3)设置服务的全局限流器【非必要】{@link Provider #globalController(FlowController)}
  * 4)设置注册中心的地址【必要】{@link Provider #registryAddress(String)}
  * 5)暴露启动服务提供者的方法【必须调用】{@link Provider #start()}
+ * 6)设置provider端提供的监控地址【非必要】{@link Provider #monitorAddress(String)}
  * @time 2016年8月16日
  * @modifytime 2016年8月23日
  */
@@ -62,6 +63,15 @@ public interface Provider {
 	 * @return
 	 */
 	Provider registryAddress(String registryAddress);
+	
+	
+	
+	/**
+	 * 监控中心的地址，不是强依赖，不设置也没有关系
+	 * @param monitorAddress
+	 * @return
+	 */
+	Provider monitorAddress(String monitorAddress);
 	
 	/**
 	 * 需要暴露的接口
