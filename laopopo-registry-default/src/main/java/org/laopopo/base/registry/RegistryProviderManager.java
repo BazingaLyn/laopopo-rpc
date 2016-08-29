@@ -1,12 +1,12 @@
 package org.laopopo.base.registry;
 
 import static org.laopopo.common.serialization.SerializerHolder.serializerImpl;
+import static org.laopopo.common.utils.Constants.ACK_OPERATION_FAILURE;
+import static org.laopopo.common.utils.Constants.ACK_OPERATION_SUCCESS;
 import static org.laopopo.common.utils.Constants.ACK_PUBLISH_CANCEL_FAILURE;
 import static org.laopopo.common.utils.Constants.ACK_PUBLISH_CANCEL_SUCCESS;
 import static org.laopopo.common.utils.Constants.ACK_PUBLISH_FAILURE;
 import static org.laopopo.common.utils.Constants.ACK_PUBLISH_SUCCESS;
-import static org.laopopo.common.utils.Constants.ACK_OPERATION_FAILURE;
-import static org.laopopo.common.utils.Constants.ACK_OPERATION_SUCCESS;
 import io.netty.channel.Channel;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
@@ -27,8 +27,8 @@ import org.laopopo.common.rpc.ServiceReviewState;
 import org.laopopo.common.transport.body.AckCustomBody;
 import org.laopopo.common.transport.body.PublishServiceCustomBody;
 import org.laopopo.common.transport.body.ReviewServiceCustomBody;
-import org.laopopo.common.transport.body.ServiceRequestCustomBody;
 import org.laopopo.common.transport.body.SubcribeResultCustomBody;
+import org.laopopo.common.transport.body.SubscribeRequestCustomBody;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -197,7 +197,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		SubcribeResultCustomBody subcribeResultCustomBody = new SubcribeResultCustomBody();
 		RemotingTransporter responseTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.SUBCRIBE_RESULT, subcribeResultCustomBody, request.getOpaque());
 		//接收到主体信息
-		ServiceRequestCustomBody requestCustomBody = serializerImpl().readObject(request.bytes(), ServiceRequestCustomBody.class);
+		SubscribeRequestCustomBody requestCustomBody = serializerImpl().readObject(request.bytes(), SubscribeRequestCustomBody.class);
 		String serviceName = requestCustomBody.getServiceName();
 		//将其降入到channel的group中去
 		this.defaultRegistryServer.getConsumerManager().getSubscriberChannels().add(channel);

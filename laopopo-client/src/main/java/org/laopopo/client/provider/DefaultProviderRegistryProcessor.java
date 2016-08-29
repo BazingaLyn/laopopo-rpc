@@ -1,7 +1,6 @@
 package org.laopopo.client.provider;
 
 import static org.laopopo.common.protocal.LaopopoProtocol.DEGRADE_SERVICE;
-import static org.laopopo.common.protocal.LaopopoProtocol.CANCEL_DEGRADE_SERVICE;
 import static org.laopopo.common.protocal.LaopopoProtocol.METRICS_SERVICE;
 import io.netty.channel.ChannelHandlerContext;
 
