@@ -1,6 +1,7 @@
 package org.laopopo.base.registry;
 
 import static org.laopopo.common.protocal.LaopopoProtocol.DEGRADE_SERVICE;
+import static org.laopopo.common.protocal.LaopopoProtocol.METRICS_SERVICE;
 import static org.laopopo.common.protocal.LaopopoProtocol.PUBLISH_CANCEL_SERVICE;
 import static org.laopopo.common.protocal.LaopopoProtocol.PUBLISH_SERVICE;
 import static org.laopopo.common.protocal.LaopopoProtocol.REVIEW_SERVICE;
@@ -45,6 +46,8 @@ public class DefaultRegistryProcessor implements NettyRequestProcessor {
 			   return this.defaultRegistryServer.getProviderManager().handleReview(request, ctx.channel());
 		   case DEGRADE_SERVICE:          //处理管理员发送过来的手动降级请求
 			   return this.defaultRegistryServer.getProviderManager().handleDegradeService(request, ctx.channel());
+		   case METRICS_SERVICE:          //处理管理员发送过来的手动降级请求
+			   return this.defaultRegistryServer.getProviderManager().handleMetricsService(request, ctx.channel());
 		}
 		
 		

@@ -37,60 +37,70 @@ import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description 处理consumer rpc请求的核心控制器，并统计处理的次数
+ * @time 2016年8月30日
+ * @modifytime
+ */
 public class ProviderRPCController {
 
 	private static final Logger logger = LoggerFactory.getLogger(ProviderRPCController.class);
 
 	private DefaultProvider defaultProvider;
 
-	// 请求被拒绝次数统计
-	private static final Meter rejectionMeter = Metrics.meter("rejection");
-
-	// 请求数据大小统计(不包括Jupiter协议头的16个字节)
-	private static final Histogram requestSizeHistogram = Metrics.histogram("request.size");
-
-	// 请求处理耗时统计(从request被解码开始, 到response数据被刷到OS内核缓冲区为止)
-	private static final Timer processingTimer = Metrics.timer("processing");
-
 	public ProviderRPCController(DefaultProvider defaultProvider) {
 		this.defaultProvider = defaultProvider;
 	}
 
 	public void handlerRPCRequest(RemotingTransporter request, Channel channel) {
+		
+		Meter rejectionMeter = null;  			// 请求被拒绝次数统计
+		Histogram requestSizeHistogram = null;  // 统计请求体的大小
+		Timer processingTimer = null;           // 统计请求的时间
+		
+		String serviceName = null;
 
 		RequestCustomBody body = null;
 
 		try {
 			byte[] bytes = request.bytes();
 			request.bytes(null);
-			requestSizeHistogram.update(bytes.length);
 
 			body = serializerImpl().readObject(bytes, RequestCustomBody.class);
 			request.setCustomHeader(body);
+			serviceName = body.getServiceName();
+			
+			rejectionMeter = Metrics.meter(serviceName);
+			requestSizeHistogram = Metrics.histogram(serviceName);
+			processingTimer = Metrics.timer(serviceName);
+			
+			requestSizeHistogram.update(bytes.length);
 		} catch (Exception e) {
-			rejected(BAD_REQUEST, channel, request);
+			rejected(BAD_REQUEST, channel, request,rejectionMeter);
 			return;
 		}
 		
 		final Pair<CurrentServiceState, ServiceWrapper> pair = defaultProvider.getProviderController().getProviderContainer().lookupService(body.getServiceName());
 		if (pair == null || pair.getValue() == null) {
-            rejected(SERVICE_NOT_FOUND, channel, request);
+            rejected(SERVICE_NOT_FOUND, channel, request,rejectionMeter);
             return;
         }
 		
 		// app flow control
         ControlResult ctrlResult = defaultProvider.getGlobalController().flowControl();
         if (!ctrlResult.isAllowed()) {
-            rejected(APP_FLOW_CONTROL, ctrlResult,channel, request);
+            rejected(APP_FLOW_CONTROL, ctrlResult,channel, request,rejectionMeter);
             return;
         }
         
-        process(pair,request,channel);
+        process(pair,request,channel,processingTimer);
 	}
 
 
 
-	private void process(Pair<CurrentServiceState, ServiceWrapper> pair, final RemotingTransporter request, Channel channel) {
+	private void process(Pair<CurrentServiceState, ServiceWrapper> pair, final RemotingTransporter request, Channel channel,final Timer processingTimer) {
 		
 		Object invokeResult = null;
 		
@@ -134,11 +144,11 @@ public class ProviderRPCController {
 		
 	}
 
-	private void rejected(Status status, Channel channel, RemotingTransporter request) {
-		rejected(status, null, channel, request);
+	private void rejected(Status status, Channel channel, RemotingTransporter request,Meter rejectionMeter) {
+		rejected(status, null, channel, request,rejectionMeter);
 	}
 
-	private void rejected(Status status, Object signal, Channel channel, final RemotingTransporter request) {
+	private void rejected(Status status, Object signal, Channel channel, final RemotingTransporter request,Meter rejectionMeter) {
 
 		rejectionMeter.mark();
 		ResultWrapper result = new ResultWrapper();

@@ -42,15 +42,17 @@ public class DefaultProvider implements Provider {
 
 	private static final Logger logger = LoggerFactory.getLogger(DefaultProvider.class);
 
-	private NettyClientConfig clientConfig;// 向注册中心连接的netty client配置
-	private NettyServerConfig serverConfig;// 等待服务提供者连接的netty server的配置
-	private NettyRemotingClient nettyRemotingClient;// 连接monitor和注册中心
-	private NettyRemotingServer nettyRemotingServer;// 等待被Consumer连接
-	private NettyRemotingServer nettyRemotingVipServer;// 等待被Consumer连接
-	private ProviderRegistryController providerController;// provider端向注册中心连接的业务逻辑的控制器
-	private ProviderRPCController providerRPCController;
-	private ExecutorService remotingExecutor; // RPC调用的核心线程执行器
-	private ExecutorService remotingVipExecutor; // RPC调用的核心线程执行器
+	private NettyClientConfig clientConfig;                // 向注册中心连接的netty client配置
+	private NettyServerConfig serverConfig;				   // 等待服务提供者连接的netty server的配置
+	private NettyRemotingClient nettyRemotingClient;       // 连接monitor和注册中心
+	private NettyRemotingServer nettyRemotingServer;       // 等待被Consumer连接
+	private NettyRemotingServer nettyRemotingVipServer;    // 等待被Consumer VIP连接
+	private ProviderRegistryController providerController; // provider端向注册中心连接的业务逻辑的控制器
+	private ProviderRPCController providerRPCController;   // consumer端远程调用的核心控制器
+	private ExecutorService remotingExecutor;              // RPC调用的核心线程执行器
+	private ExecutorService remotingVipExecutor;           // RPC调用的核心线程执行器
+    //定时检查 TODO
+	private Channel monitorChannel;                        // 连接monitor端的channel
 
 	/********* 要发布的服务的信息 ***********/
 	private List<RemotingTransporter> publishRemotingTransporters;
@@ -118,13 +120,36 @@ public class DefaultProvider implements Provider {
 				}
 			}
 		}, 1, 1, TimeUnit.MINUTES);
+		
+		//如果监控中心的地址不是null，则需要定时发送统计信息
+		if(monitorAddress != null){
+			
+			this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
+				@Override
+				public void run() {
+					DefaultProvider.this.providerController.getProviderMonitorController().sendMetricsInfo();
+				}
+			}, 1, 1, TimeUnit.MINUTES);
+			
+			this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
+
+				@Override
+				public void run() {
+					try {
+						DefaultProvider.this.providerController.getProviderMonitorController().checkMonitorChannel();
+					} catch (InterruptedException e) {
+						logger.warn("schedule check monitor channel failed [{}]", e.getMessage());
+					}
+				}
+			}, 30, 60, TimeUnit.SECONDS);
+		}
 	}
 
 	private void registerProcessor() {
 		// provider端作为client端去连接registry注册中心的处理器
 		this.nettyRemotingClient.registerProcessor(LaopopoProtocol.DEGRADE_SERVICE, new DefaultProviderRegistryProcessor(this), null);
-		this.nettyRemotingClient.registerProcessor(LaopopoProtocol.METRICS_SERVICE, new DefaultProviderRegistryProcessor(this), null);
+		// provider端连接registry链接inactive的时候要进行的操作(设置registry的状态为不健康，告之registry重新发送服务注册信息)
 		this.nettyRemotingClient.registerChannelInactiveProcessor(new DefaultProviderInactiveProcessor(this), null);
 		// provider端作为netty的server端去等待调用者连接的处理器，此处理器只处理RPC请求
 		this.nettyRemotingServer.registerDefaultProcessor(new DefaultProviderRPCProcessor(this), this.remotingExecutor);
@@ -211,9 +236,13 @@ public class DefaultProvider implements Provider {
 		}
 
 		if (monitorAddress != null) {
-			this.connectionToMonitor();
+			initMonitorChannel();
 		}
 
+	}
+
+	public void initMonitorChannel() throws InterruptedException {
+		monitorChannel = this.connectionToMonitor();
 	}
 
 	/**
@@ -263,13 +292,8 @@ public class DefaultProvider implements Provider {
 		return remotingTransporter;
 	}
 
-
-	public RemotingTransporter handlerMetricsService(RemotingTransporter request, Channel channel) {
-		return null;
-	}
-
-	private void connectionToMonitor() throws InterruptedException {
-		this.nettyRemotingClient.createChannel(monitorAddress);
+	private Channel connectionToMonitor() throws InterruptedException {
+		return this.nettyRemotingClient.createChannel(monitorAddress);
 	}
 
 	public NettyRemotingClient getNettyRemotingClient() {
@@ -303,5 +327,22 @@ public class DefaultProvider implements Provider {
 	public void setProviderStateIsHealthy(boolean providerStateIsHealthy) {
 		ProviderStateIsHealthy = providerStateIsHealthy;
 	}
+
+	public Channel getMonitorChannel() {
+		return monitorChannel;
+	}
+
+	public void setMonitorChannel(Channel monitorChannel) {
+		this.monitorChannel = monitorChannel;
+	}
+
+	public String getMonitorAddress() {
+		return monitorAddress;
+	}
+
+	public void setMonitorAddress(String monitorAddress) {
+		this.monitorAddress = monitorAddress;
+	}
+	
 
 }

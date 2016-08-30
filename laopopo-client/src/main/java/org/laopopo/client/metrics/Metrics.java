@@ -1,7 +1,12 @@
 package org.laopopo.client.metrics;
 
 import java.io.File;
+import java.util.SortedMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
+
+import org.laopopo.common.rpc.MetricsReporter;
 
 import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.Counter;
@@ -22,6 +27,8 @@ import com.codahale.metrics.Timer;
 public class Metrics {
 
 	private static final MetricRegistry metricsRegistry = new MetricRegistry();
+	
+	private static ConcurrentMap<String, MetricsReporter> globalMetricsReporter = new ConcurrentHashMap<String, MetricsReporter>();
 	
 	private static final ScheduledReporter scheduledReporter;
 	
@@ -46,6 +53,56 @@ public class Metrics {
 		}
 		
 		scheduledReporter.start(1, TimeUnit.MINUTES);
+	}
+	
+	public static void scheduledSendReport(){
+		
+		SortedMap<String, Meter> map = metricsRegistry.getMeters();                //失败调用的统计
+		SortedMap<String, Histogram> histograms = metricsRegistry.getHistograms(); //统计请求体的大小
+		SortedMap<String, Timer> timer = metricsRegistry.getTimers();              //请求时间的统计||请求的统计
+		
+		if(null != map && map.keySet() != null && map.keySet().size() > 0){
+			//循环每一个统计的serviceName的信息
+			for(String serviceName :map.keySet()){
+				
+				MetricsReporter metricsReporter = globalMetricsReporter.get(serviceName);
+				if(null == metricsReporter){
+					metricsReporter = new MetricsReporter();
+					metricsReporter.setServiceName(serviceName);
+				}
+				Meter meter = map.get(serviceName);
+				metricsReporter.setFailCount(meter.getCount()); //设置失败次数
+			}
+		}
+		
+		if(null != histograms && histograms.keySet() != null && histograms.keySet().size() > 0){
+			//循环每一个统计的serviceName的信息
+			for(String serviceName :map.keySet()){
+				
+				MetricsReporter metricsReporter = globalMetricsReporter.get(serviceName);
+				if(null == metricsReporter){
+					metricsReporter = new MetricsReporter();
+					metricsReporter.setServiceName(serviceName);
+				}
+				Histogram Histogram = histograms.get(serviceName);
+				metricsReporter.setHandlerDataAvgSize(Histogram.getSnapshot().getMean()); //设置请求体的平均大小
+			}
+		}
+		
+		if(null != timer && timer.keySet() != null && timer.keySet().size() > 0){
+			//循环每一个统计的serviceName的信息
+			for(String serviceName :map.keySet()){
+				
+				MetricsReporter metricsReporter = globalMetricsReporter.get(serviceName);
+				if(null == metricsReporter){
+					metricsReporter = new MetricsReporter();
+					metricsReporter.setServiceName(serviceName);
+				}
+				Timer currentTime = timer.get(serviceName);
+				metricsReporter.setCallCount(currentTime.getCount()); //设置请求的次数
+				metricsReporter.setHandlerAvgTime(currentTime.getSnapshot().getMean());
+			}
+		}
 	}
 	
 	
@@ -86,5 +143,15 @@ public class Metrics {
     public static Histogram histogram(Class<?> clazz, String... names) {
         return metricsRegistry.histogram(MetricRegistry.name(clazz, names));
     }
+
+
+	public static ConcurrentMap<String, MetricsReporter> getGlobalMetricsReporter() {
+		return globalMetricsReporter;
+	}
+
+	public static void setGlobalMetricsReporter(ConcurrentMap<String, MetricsReporter> globalMetricsReporter) {
+		Metrics.globalMetricsReporter = globalMetricsReporter;
+	}
+    
 
 }

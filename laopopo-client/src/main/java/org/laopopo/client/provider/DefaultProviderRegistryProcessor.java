@@ -33,8 +33,6 @@ public class DefaultProviderRegistryProcessor implements NettyRequestProcessor {
 		switch (request.getCode()) {
 		   case DEGRADE_SERVICE:
 			    return this.defaultProvider.handlerDegradeService(request,ctx.channel());
-		   case METRICS_SERVICE:
-			   return this.defaultProvider.handlerMetricsService(request,ctx.channel());
 		}
 		return null;
 	}
