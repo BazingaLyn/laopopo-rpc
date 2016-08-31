@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.laopopo.common.exception.remoting.RemotingCommmonCustomException;
+import org.laopopo.common.loadbalance.LoadBalanceStrategy;
 import org.laopopo.common.rpc.RegisterMeta;
 
 /**
@@ -15,6 +16,9 @@ import org.laopopo.common.rpc.RegisterMeta;
  */
 public class SubcribeResultCustomBody implements CommonCustomBody {
 	
+	private String serviceName;
+	
+	private LoadBalanceStrategy loadBalanceStrategy;
 	
 	private List<RegisterMeta> registerMeta = new ArrayList<RegisterMeta>();
 	
@@ -29,97 +33,13 @@ public class SubcribeResultCustomBody implements CommonCustomBody {
 	public void setRegisterMeta(List<RegisterMeta> registerMeta) {
 		this.registerMeta = registerMeta;
 	}
-	
-//	public static class ServiceInfo {
-//		private String host;
-//
-//		private int port;
-//		// 服务名
-//		private String serviceProviderName;
-//		// 是否该服务是VIP服务，如果该服务是VIP服务，走特定的channel，也可以有降级的服务
-//		private boolean isVIPService;
-//		//权重
-//		private volatile int weight;
-//		// 建议连接数 hashCode()与equals()不把connCount计算在内
-//		private volatile int connCount;
-//
-//		public ServiceInfo(String host, int port, String serviceProviderName, boolean isVIPService, int weight, int connCount) {
-//			this.host = host;
-//			this.port = port;
-//			this.serviceProviderName = serviceProviderName;
-//			this.isVIPService = isVIPService;
-//			this.weight = weight;
-//			this.connCount = connCount;
-//		}
-//
-//		public String getHost() {
-//			return host;
-//		}
-//
-//		public void setHost(String host) {
-//			this.host = host;
-//		}
-//
-//		public int getPort() {
-//			return port;
-//		}
-//
-//		public void setPort(int port) {
-//			this.port = port;
-//		}
-//
-//		public String getServiceProviderName() {
-//			return serviceProviderName;
-//		}
-//
-//		public void setServiceProviderName(String serviceProviderName) {
-//			this.serviceProviderName = serviceProviderName;
-//		}
-//
-//		public boolean isVIPService() {
-//			return isVIPService;
-//		}
-//
-//		public void setVIPService(boolean isVIPService) {
-//			this.isVIPService = isVIPService;
-//		}
-//
-//		public int getWeight() {
-//			return weight;
-//		}
-//
-//		public void setWeight(int weight) {
-//			this.weight = weight;
-//		}
-//
-//		public int getConnCount() {
-//			return connCount;
-//		}
-//
-//		public void setConnCount(int connCount) {
-//			this.connCount = connCount;
-//		}
-//
-//		@Override
-//		public String toString() {
-//			return "ServiceInfo [host=" + host + ", port=" + port + ", serviceProviderName=" + serviceProviderName + ", isVIPService=" + isVIPService
-//					+ ", weight=" + weight + ", connCount=" + connCount + "]";
-//		}
-//		
-//	}
-//	
-//
-//	public List<ServiceInfo> getServiceInfos() {
-//		return serviceInfos;
-//	}
-//
-//	public void setServiceInfos(List<ServiceInfo> serviceInfos) {
-//		this.serviceInfos = serviceInfos;
-//	}
-//
-//	@Override
-//	public String toString() {
-//		return "SubcribeResultCustomBody [serviceInfos=" + serviceInfos + "]";
-//	}
+
+	public LoadBalanceStrategy getLoadBalanceStrategy() {
+		return loadBalanceStrategy;
+	}
+
+	public void setLoadBalanceStrategy(LoadBalanceStrategy loadBalanceStrategy) {
+		this.loadBalanceStrategy = loadBalanceStrategy;
+	}
 
 }

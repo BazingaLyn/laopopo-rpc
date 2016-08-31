@@ -32,8 +32,7 @@ public class LaopopoProtocol {
   	//consumer发送给registry注册服务
   	public static final byte SUBSCRIBE_SERVICE = 69;
   	
-  	//审核服务
-  	public static final byte REVIEW_SERVICE = 70;
+  	public static final byte MANAGER_SERVICE = 70;
   	
   	public static final byte OFFLINE_ADDRESS = 71;
   	
@@ -43,25 +42,20 @@ public class LaopopoProtocol {
   	
   	public static final byte RPC_RESPONSE = 74;
   	
-  	public static final byte METRICS_SERVICE = 75;
+  	public static final byte CHANGE_LOADBALANCE = 75;
   	
-  	public static final byte CANCEL_DEGRADE_SERVICE = 76;
-    
     //心跳
     public static final byte HEARTBEAT = 127;
     
     public static final byte ACK = 126;
 
-    
-
-    
+	
 
     
     private byte type;
     private byte sign;
     private long id;
     private int bodyLength;
-    
     
 	public byte type() {
 		return type;

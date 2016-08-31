@@ -14,12 +14,15 @@ import io.netty.util.internal.ConcurrentSet;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.laopopo.common.exception.remoting.RemotingSendRequestException;
 import org.laopopo.common.exception.remoting.RemotingTimeoutException;
+import org.laopopo.common.loadbalance.LoadBalanceStrategy;
 import org.laopopo.common.metrics.ServiceMetrics;
 import org.laopopo.common.metrics.ServiceMetrics.ConsumerInfo;
 import org.laopopo.common.metrics.ServiceMetrics.ProviderInfo;
@@ -28,10 +31,9 @@ import org.laopopo.common.rpc.RegisterMeta;
 import org.laopopo.common.rpc.RegisterMeta.Address;
 import org.laopopo.common.rpc.ServiceReviewState;
 import org.laopopo.common.transport.body.AckCustomBody;
-import org.laopopo.common.transport.body.MetricsRequestCustomBody;
+import org.laopopo.common.transport.body.ManagerServiceCustomBody;
 import org.laopopo.common.transport.body.PublishServiceCustomBody;
 import org.laopopo.common.transport.body.RegistryMetricsCustomBody;
-import org.laopopo.common.transport.body.ReviewServiceCustomBody;
 import org.laopopo.common.transport.body.SubcribeResultCustomBody;
 import org.laopopo.common.transport.body.SubscribeRequestCustomBody;
 import org.laopopo.remoting.ConnectionUtils;
@@ -44,7 +46,6 @@ import org.slf4j.LoggerFactory;
  * @author BazingaLyn
  * @description 注册服务中心端的provider侧的管理
  * 
- * @notice 如果用户在monitor端配置某个服务的权重，某个服务的审核，某个服务的手动降级 等操作，默认1分钟后生效
  * @time 2016年8月15日
  * @modifytime
  */
@@ -57,17 +58,42 @@ public class RegistryProviderManager implements RegistryProviderServer {
 
 	private DefaultRegistryServer defaultRegistryServer;
 
+	// 某个服务
 	private final ConcurrentMap<String, ConcurrentMap<Address, RegisterMeta>> globalRegisterInfoMap = new ConcurrentHashMap<String, ConcurrentMap<Address, RegisterMeta>>();
-
 	// 指定节点都注册了哪些服务
 	private final ConcurrentMap<Address, ConcurrentSet<String>> globalServiceMetaMap = new ConcurrentHashMap<RegisterMeta.Address, ConcurrentSet<String>>();
-
+	// 某个服务 订阅它的消费者的channel集合
 	private final ConcurrentMap<String, ConcurrentSet<Channel>> globalConsumerMetaMap = new ConcurrentHashMap<String, ConcurrentSet<Channel>>();
+	// 提供者某个地址对应的channel
+	private final ConcurrentMap<Address, Channel> globalProviderChannelMetaMap = new ConcurrentHashMap<RegisterMeta.Address, Channel>();
 
-	private final ConcurrentHashMap<Address, Channel> globalProviderChannelMetaMap = new ConcurrentHashMap<RegisterMeta.Address, Channel>();
+	private final ConcurrentMap<String, LoadBalanceStrategy> globalServiceLoadBalance = new ConcurrentHashMap<String, LoadBalanceStrategy>();
 
 	public RegistryProviderManager(DefaultRegistryServer defaultRegistryServer) {
 		this.defaultRegistryServer = defaultRegistryServer;
+	}
+
+	public RemotingTransporter handleManager(RemotingTransporter request, Channel channel) throws RemotingSendRequestException, RemotingTimeoutException,
+			InterruptedException {
+
+		ManagerServiceCustomBody managerServiceCustomBody = serializerImpl().readObject(request.bytes(), ManagerServiceCustomBody.class);
+
+		switch (managerServiceCustomBody.getManagerServiceRequestType()) {
+			case REVIEW:
+				return handleReview(managerServiceCustomBody.getSerivceName(), managerServiceCustomBody.getAddress(), request.getOpaque(),
+						managerServiceCustomBody.getServiceReviewState());
+			case DEGRADE:
+				return handleDegradeService(request, channel);
+			case MODIFY_WEIGHT:
+				return handleModifyWeight(request.getOpaque(), managerServiceCustomBody);
+			case MODIFY_LOADBALANCE:
+				return handleModifyLoadBalance(request.getOpaque(), managerServiceCustomBody);
+			case METRICS:
+				return handleMetricsService(managerServiceCustomBody.getSerivceName(), request.getOpaque());
+			default:
+				break;
+		}
+		return null;
 	}
 
 	/**
@@ -116,13 +142,16 @@ public class RegistryProviderManager implements RegistryProviderServer {
 
 			this.getServiceMeta(meta.getAddress()).add(serviceName);
 
+			// 设置该服务默认的负载均衡的策略
+			globalServiceLoadBalance.put(serviceName, LoadBalanceStrategy.WEIGHTINGRANDOM);
+
 			// 判断provider发送的信息已经被成功的存储的情况下，则告之服务注册成功
 			ackCustomBody.setDesc(ACK_PUBLISH_SUCCESS);
 			ackCustomBody.setSuccess(true);
 
 			// 如果审核通过，则通知相关服务的订阅者
 			if (meta.getIsReviewed() == ServiceReviewState.PASS_REVIEW) {
-				this.defaultRegistryServer.getConsumerManager().notifyMacthedSubscriber(meta);
+				this.defaultRegistryServer.getConsumerManager().notifyMacthedSubscriber(meta, globalServiceLoadBalance.get(serviceName));
 			}
 		}
 
@@ -131,16 +160,13 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		return responseTransporter;
 	}
 
-	public RemotingTransporter handleMetricsService(RemotingTransporter request, Channel channel) {
-
-		MetricsRequestCustomBody body = serializerImpl().readObject(request.bytes(), MetricsRequestCustomBody.class);
+	public RemotingTransporter handleMetricsService(String metricsServiceName, long requestId) {
 
 		RegistryMetricsCustomBody responseBody = new RegistryMetricsCustomBody();
-		RemotingTransporter remotingTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.METRICS_SERVICE, responseBody,
-				request.getOpaque());
+		RemotingTransporter remotingTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.MANAGER_SERVICE, responseBody, requestId);
 		List<ServiceMetrics> serviceMetricses = new ArrayList<ServiceMetrics>();
 		// 统计全部
-		if (body.getServiceName() == null) {
+		if (metricsServiceName == null) {
 
 			if (globalServiceMetaMap.keySet() != null) {
 
@@ -149,8 +175,8 @@ public class RegistryProviderManager implements RegistryProviderServer {
 					serviceMetricses.add(serviceMetrics);
 				}
 			}
-		} else { // 即使更新的服务
-			String serviceName = body.getServiceName();
+		} else { // 更新的服务
+			String serviceName = metricsServiceName;
 			ServiceMetrics serviceMetrics = assemblyServiceMetricsByServiceName(serviceName);
 			serviceMetricses.add(serviceMetrics);
 
@@ -159,74 +185,82 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		return remotingTransporter;
 	}
 
-	private ServiceMetrics assemblyServiceMetricsByServiceName(String serviceName) {
-		ServiceMetrics serviceMetrics = new ServiceMetrics();
-		serviceMetrics.setServiceName(serviceName);
-		ConcurrentMap<Address, RegisterMeta> concurrentMap = globalRegisterInfoMap.get(serviceName);
-		if (null != concurrentMap && concurrentMap.keySet() != null) {
-			List<ProviderInfo> providerInfos = new ArrayList<ServiceMetrics.ProviderInfo>();
-			for (Address address : concurrentMap.keySet()) {
+	/**
+	 * 修改某个服务的负载均衡的策略
+	 * 
+	 * @param opaque
+	 * @param managerServiceCustomBody
+	 * @return
+	 */
+	private RemotingTransporter handleModifyLoadBalance(long opaque, ManagerServiceCustomBody managerServiceCustomBody) {
 
-				ProviderInfo providerInfo = new ProviderInfo();
-				providerInfo.setPort(address.getPort());
-				providerInfo.setHost(address.getHost());
-				RegisterMeta meta = concurrentMap.get(address);
-				providerInfo.setServiceReviewState(meta.getIsReviewed());
-				providerInfo.setIsDegradeService(meta.isHasDegradeService());
-				providerInfo.setIsVipService(meta.isVIPService());
-				providerInfo.setIsSupportDegrade(meta.isSupportDegradeService());
+		AckCustomBody ackCustomBody = new AckCustomBody(opaque, false, ACK_OPERATION_FAILURE);
+		RemotingTransporter responseTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, opaque);
 
-				providerInfos.add(providerInfo);
+		String serviceName = managerServiceCustomBody.getSerivceName();
+		LoadBalanceStrategy balanceStrategy = managerServiceCustomBody.getLoadBalanceStrategy();
+
+		synchronized (globalServiceLoadBalance) {
+			LoadBalanceStrategy currentLoadBalanceStrategy = globalServiceLoadBalance.get(serviceName);
+
+			if (null == currentLoadBalanceStrategy) {
+				return responseTransporter;
 			}
-			serviceMetrics.setProviderInfos(providerInfos);
-		}
-		ConcurrentSet<Channel> channels = globalConsumerMetaMap.get(serviceName);
-		if (null != channels && channels.size() > 0) {
-			List<ConsumerInfo> consumerInfos = new ArrayList<ServiceMetrics.ConsumerInfo>();
-			for (Channel consumerChannel : channels) {
-				ConsumerInfo consumerInfo = new ConsumerInfo();
-				String consumerAddress = ConnectionUtils.parseChannelRemoteAddr(consumerChannel);
-				if (!"".equals(consumerAddress) && null != consumerAddress) {
-					String[] s = consumerAddress.split(":");
-					consumerInfo.setHost(s[0]);
-					consumerInfo.setPort(Integer.parseInt(s[1]));
-					consumerInfos.add(consumerInfo);
-				}
+
+			ackCustomBody.setDesc(ACK_PUBLISH_SUCCESS);
+			ackCustomBody.setSuccess(true);
+
+			if (currentLoadBalanceStrategy != balanceStrategy) {
+				currentLoadBalanceStrategy = balanceStrategy;
+
 			}
-			serviceMetrics.setConsumerInfos(consumerInfos);
 		}
-		return serviceMetrics;
+
+		return responseTransporter;
 	}
 
-	public RemotingTransporter handleDegradeService(RemotingTransporter request, Channel channel) throws RemotingSendRequestException,
+	/**
+	 * 修改某个服务实例上的权重
+	 * 
+	 * @param opaque
+	 * @param managerServiceCustomBody
+	 * @param channel
+	 * @return
+	 * @throws InterruptedException
+	 * @throws RemotingTimeoutException
+	 * @throws RemotingSendRequestException
+	 */
+	private RemotingTransporter handleModifyWeight(long opaque, ManagerServiceCustomBody managerServiceCustomBody) throws RemotingSendRequestException,
 			RemotingTimeoutException, InterruptedException {
 
-		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false, ACK_OPERATION_FAILURE);
-		RemotingTransporter remotingTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, request.getOpaque());
+		// 准备好ack信息返回个provider，悲观主义，默认返回失败ack，要求provider重新发送请求
+		AckCustomBody ackCustomBody = new AckCustomBody(opaque, false, ACK_OPERATION_FAILURE);
+		RemotingTransporter responseTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, opaque);
 
-		ReviewServiceCustomBody body = serializerImpl().readObject(request.bytes(), ReviewServiceCustomBody.class);
+		String serviceName = managerServiceCustomBody.getSerivceName(); // 服务名
+		Address address = managerServiceCustomBody.getAddress(); // 地址
+		Integer weight = managerServiceCustomBody.getWeightVal(); // 权重
 
-		String serviceName = body.getSerivceName();
 		ConcurrentMap<Address, RegisterMeta> maps = this.getRegisterMeta(serviceName);
-
-		Address address = null;
 
 		synchronized (globalRegisterInfoMap) {
 
-			RegisterMeta existRegiserMeta = maps.get(body.getAddress());
-			if (null == existRegiserMeta) {
-				return remotingTransporter;
+			if (maps == null) {
+				return responseTransporter;
 			}
-			if (existRegiserMeta.getIsReviewed() != ServiceReviewState.PASS_REVIEW) {
-				return remotingTransporter;
-			}
+			RegisterMeta meta = maps.get(address);
+			meta.setWeight(weight);
 
-			address = existRegiserMeta.getAddress();
+			ackCustomBody.setDesc(ACK_PUBLISH_SUCCESS);
+			ackCustomBody.setSuccess(true);
+
+			// 如果审核通过，则通知相关服务的订阅者
+			if (meta.getIsReviewed() == ServiceReviewState.PASS_REVIEW) {
+				this.defaultRegistryServer.getConsumerManager().notifyMacthedSubscriber(meta, globalServiceLoadBalance.get(serviceName));
+			}
 		}
 
-		Channel matchedProviderChannel = globalProviderChannelMetaMap.get(address);
-
-		return defaultRegistryServer.getRemotingServer().invokeSync(matchedProviderChannel, request, 3000l);
+		return responseTransporter;
 	}
 
 	/**
@@ -279,12 +313,14 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		// 将其降入到channel的group中去
 		this.defaultRegistryServer.getConsumerManager().getSubscriberChannels().add(channel);
 
-		// 存入到消费者中全局变量中去 TODO is need?
+		// 存储消费者信息
 		ConcurrentSet<Channel> channels = globalConsumerMetaMap.get(serviceName);
 		if (null == channels) {
 			channels = new ConcurrentSet<Channel>();
 		}
 		channels.add(channel);
+		globalConsumerMetaMap.put(serviceName, channels);
+		
 
 		attachSubscribeEventOnChannel(serviceName, channel);
 
@@ -334,45 +370,6 @@ public class RegistryProviderManager implements RegistryProviderServer {
 					this.defaultRegistryServer.getConsumerManager().notifyMacthedSubscriberCancel(meta);
 			}
 		}
-	}
-
-	/**
-	 * 审核服务
-	 * 
-	 * @param request
-	 * @param channel
-	 * @return
-	 */
-	public RemotingTransporter handleReview(RemotingTransporter request, Channel channel) {
-
-		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false, ACK_OPERATION_FAILURE);
-		RemotingTransporter remotingTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, request.getOpaque());
-
-		if (logger.isDebugEnabled()) {
-			logger.info("review service {} on channel{}.", request, channel);
-		}
-
-		ReviewServiceCustomBody body = serializerImpl().readObject(request.bytes(), ReviewServiceCustomBody.class);
-
-		// 获取到这个服务的所有
-		ConcurrentMap<Address, RegisterMeta> maps = this.getRegisterMeta(body.getSerivceName());
-
-		if (maps.isEmpty()) {
-			return remotingTransporter;
-		}
-
-		synchronized (globalRegisterInfoMap) {
-
-			RegisterMeta data = maps.get(body.getAddress());
-
-			if (data != null) {
-				ackCustomBody.setDesc(ACK_OPERATION_SUCCESS);
-				ackCustomBody.setSuccess(true);
-				data.setIsReviewed(body.getServiceReviewState());
-			}
-		}
-
-		return remotingTransporter;
 	}
 
 	/*
@@ -468,6 +465,128 @@ public class RegistryProviderManager implements RegistryProviderServer {
 
 	public ConcurrentMap<Address, ConcurrentSet<String>> getGlobalServiceMetaMap() {
 		return globalServiceMetaMap;
+	}
+
+	/**
+	 * 组装服务信息反馈给管理页面
+	 * 
+	 * @param serviceName
+	 * @return
+	 */
+	private ServiceMetrics assemblyServiceMetricsByServiceName(String serviceName) {
+		ServiceMetrics serviceMetrics = new ServiceMetrics();
+		serviceMetrics.setServiceName(serviceName);
+		serviceMetrics.setLoadBalanceStrategy(globalServiceLoadBalance.get(serviceName));
+		ConcurrentMap<Address, RegisterMeta> concurrentMap = globalRegisterInfoMap.get(serviceName);
+		if (null != concurrentMap && concurrentMap.keySet() != null) {
+			Set<ProviderInfo> providerInfos = new HashSet<ServiceMetrics.ProviderInfo>();
+			for (Address address : concurrentMap.keySet()) {
+
+				ProviderInfo providerInfo = new ProviderInfo();
+				providerInfo.setPort(address.getPort());
+				providerInfo.setHost(address.getHost());
+				RegisterMeta meta = concurrentMap.get(address);
+				providerInfo.setServiceReviewState(meta.getIsReviewed());
+				providerInfo.setIsDegradeService(meta.isHasDegradeService());
+				providerInfo.setIsVipService(meta.isVIPService());
+				providerInfo.setIsSupportDegrade(meta.isSupportDegradeService());
+
+				providerInfos.add(providerInfo);
+			}
+			serviceMetrics.setProviderInfos(providerInfos);
+		}
+		ConcurrentSet<Channel> channels = globalConsumerMetaMap.get(serviceName);
+		if (null != channels && channels.size() > 0) {
+			Set<ConsumerInfo> consumerInfos = new HashSet<ServiceMetrics.ConsumerInfo>();
+			for (Channel consumerChannel : channels) {
+				ConsumerInfo consumerInfo = new ConsumerInfo();
+				String consumerAddress = ConnectionUtils.parseChannelRemoteAddr(consumerChannel);
+				if (!"".equals(consumerAddress) && null != consumerAddress) {
+					String[] s = consumerAddress.split(":");
+					consumerInfo.setHost(s[0]);
+					consumerInfo.setPort(Integer.parseInt(s[1]));
+					consumerInfos.add(consumerInfo);
+				}
+			}
+			serviceMetrics.setConsumerInfos(consumerInfos);
+		}
+		return serviceMetrics;
+	}
+
+	/**
+	 * 审核服务
+	 * 
+	 * @param request
+	 * @param channel
+	 * @return
+	 */
+	private RemotingTransporter handleReview(String serviceName, Address address, long requestId, ServiceReviewState reviewState) {
+
+		AckCustomBody ackCustomBody = new AckCustomBody(requestId, false, ACK_OPERATION_FAILURE);
+		RemotingTransporter remotingTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, requestId);
+
+		// 获取到这个服务的所有
+		ConcurrentMap<Address, RegisterMeta> maps = this.getRegisterMeta(serviceName);
+
+		if (maps.isEmpty()) {
+			return remotingTransporter;
+		}
+
+		synchronized (globalRegisterInfoMap) {
+
+			// 只修改该地址提供的信息
+			if (null != address) {
+				RegisterMeta data = maps.get(address);
+
+				if (data != null) {
+					ackCustomBody.setDesc(ACK_OPERATION_SUCCESS);
+					ackCustomBody.setSuccess(true);
+					data.setIsReviewed(reviewState);
+				}
+			} else { // 如果传递的地址是null，说明是审核该服务的所有地址
+				if (null != maps.values() && maps.values().size() > 0) {
+					ackCustomBody.setDesc(ACK_OPERATION_SUCCESS);
+					ackCustomBody.setSuccess(true);
+					for (RegisterMeta meta : maps.values()) {
+						meta.setIsReviewed(reviewState);
+					}
+				}
+			}
+		}
+		return remotingTransporter;
+	}
+
+	private RemotingTransporter handleDegradeService(RemotingTransporter request, Channel channel) throws RemotingSendRequestException,
+			RemotingTimeoutException, InterruptedException {
+
+		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false, ACK_OPERATION_FAILURE);
+		RemotingTransporter remotingTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, request.getOpaque());
+
+		ManagerServiceCustomBody body = serializerImpl().readObject(request.bytes(), ManagerServiceCustomBody.class);
+
+		String serviceName = body.getSerivceName();
+		ConcurrentMap<Address, RegisterMeta> maps = this.getRegisterMeta(serviceName);
+
+		Address address = null;
+
+		synchronized (globalRegisterInfoMap) {
+
+			if (null != body.getAddress()) {
+
+				RegisterMeta existRegiserMeta = maps.get(body.getAddress());
+				if (null == existRegiserMeta) {
+					return remotingTransporter;
+				}
+				if (existRegiserMeta.getIsReviewed() != ServiceReviewState.PASS_REVIEW) {
+					return remotingTransporter;
+				}
+
+				address = existRegiserMeta.getAddress();
+			}
+
+		}
+		Channel matchedProviderChannel = globalProviderChannelMetaMap.get(address);
+		return defaultRegistryServer.getRemotingServer().invokeSync(matchedProviderChannel, request, 3000l);
 	}
 
 }

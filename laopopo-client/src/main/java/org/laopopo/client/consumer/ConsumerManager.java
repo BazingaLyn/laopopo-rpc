@@ -138,6 +138,9 @@ public class ConsumerManager {
 			
 		}
 	}
+	public RemotingTransporter handlerServiceLoadBalance(RemotingTransporter request, Channel channel) {
+		return null;
+	}
 
 
 }

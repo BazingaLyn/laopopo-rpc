@@ -42,7 +42,7 @@ public class ProviderMonitorController {
 
 			ProviderMetricsCustomBody body = new ProviderMetricsCustomBody();
 			body.setMetricsReporter(reporters);
-			RemotingTransporter remotingTransporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.METRICS_SERVICE, body);
+			RemotingTransporter remotingTransporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.MANAGER_SERVICE, body);
 			Channel channel = defaultProvider.getMonitorChannel();
 
 			if (null != channel && channel.isActive() && channel.isWritable()) {

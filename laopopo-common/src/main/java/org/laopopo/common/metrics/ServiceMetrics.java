@@ -1,24 +1,27 @@
 package org.laopopo.common.metrics;
 
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
+import org.laopopo.common.loadbalance.LoadBalanceStrategy;
 import org.laopopo.common.rpc.ServiceReviewState;
 
 /**
  * 
  * @author BazingaLyn
- * @description 
- * @time
- * @modifytime
+ * @description 服务统计信息，用于管理人员管理服务数据
+ * @time 2016年8月29日
+ * @modifytime 2016年8月31日
  */
 public class ServiceMetrics {
 	
-	private String serviceName;                      //服务名
-	private Long totalCallCount;                     //该服务的总共的统计次数
-	private Long totalFailCount;                     //该服务的总共的失败次数
-	private Double totalHandlerRequestBodySize;      //该服务的请求的总大小
-	private List<ConsumerInfo> consumerInfos;        //该服务的消费者的信息
-	private List<ProviderInfo> providerInfos;        //该服务的提供者的信息
+	private String serviceName;                      							  //服务名
+	private Long totalCallCount;                     							  //该服务的总共的统计次数
+	private Long totalFailCount;                    							  //该服务的总共的失败次数
+	private Double totalHandlerRequestBodySize;    								  //该服务的请求的总大小
+	private Set<ConsumerInfo> consumerInfos = new HashSet<ConsumerInfo>();        //该服务的消费者的信息
+	private Set<ProviderInfo> providerInfos = new HashSet<ProviderInfo>();        //该服务的提供者的信息
+	private LoadBalanceStrategy loadBalanceStrategy; 							  //负载均衡策略
 	
 	public String getServiceName() {
 		return serviceName;
@@ -52,21 +55,30 @@ public class ServiceMetrics {
 		this.totalHandlerRequestBodySize = totalHandlerRequestBodySize;
 	}
 
-	public List<ConsumerInfo> getConsumerInfos() {
+	public Set<ConsumerInfo> getConsumerInfos() {
 		return consumerInfos;
 	}
 
-	public void setConsumerInfos(List<ConsumerInfo> consumerInfos) {
+	public void setConsumerInfos(Set<ConsumerInfo> consumerInfos) {
 		this.consumerInfos = consumerInfos;
 	}
 
-	public List<ProviderInfo> getProviderInfos() {
+	public Set<ProviderInfo> getProviderInfos() {
 		return providerInfos;
 	}
 
-	public void setProviderInfos(List<ProviderInfo> providerInfos) {
+	public void setProviderInfos(Set<ProviderInfo> providerInfos) {
 		this.providerInfos = providerInfos;
 	}
+
+	public LoadBalanceStrategy getLoadBalanceStrategy() {
+		return loadBalanceStrategy;
+	}
+
+	public void setLoadBalanceStrategy(LoadBalanceStrategy loadBalanceStrategy) {
+		this.loadBalanceStrategy = loadBalanceStrategy;
+	}
+	
 
 	public static class ConsumerInfo {
 		
@@ -89,9 +101,16 @@ public class ServiceMetrics {
 		public void setHost(String host) {
 			this.host = host;
 		}
+
+		@Override
+		public String toString() {
+			return "ConsumerInfo [port=" + port + ", host=" + host + "]";
+		}
+		
 		
 	}
 	
+	//提供者的信息
 	public static class ProviderInfo {
 		
 		private int port;                  //端口号
@@ -165,6 +184,19 @@ public class ServiceMetrics {
 		public void setServiceReviewState(ServiceReviewState serviceReviewState) {
 			this.serviceReviewState = serviceReviewState;
 		}
+		@Override
+		public String toString() {
+			return "ProviderInfo [port=" + port + ", host=" + host + ", callCount=" + callCount + ", failCount=" + failCount + ", handlerAvgTime="
+					+ handlerAvgTime + ", handlerDataAvgSize=" + handlerDataAvgSize + ", isDegradeService=" + isDegradeService + ", isSupportDegrade="
+					+ isSupportDegrade + ", isVipService=" + isVipService + ", serviceReviewState=" + serviceReviewState + "]";
+		}
+	}
+
+	@Override
+	public String toString() {
+		return "ServiceMetrics [serviceName=" + serviceName + ", totalCallCount=" + totalCallCount + ", totalFailCount=" + totalFailCount
+				+ ", totalHandlerRequestBodySize=" + totalHandlerRequestBodySize + ", consumerInfos=" + consumerInfos + ", providerInfos=" + providerInfos
+				+ ", loadBalanceStrategy=" + loadBalanceStrategy + "]";
 	}
 
 }

@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * #####消费端########
  * 
  * @author BazingaLyn
  * @description 默认的消费类
@@ -74,6 +75,7 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 	private void registerProcessor() {
 		this.registryNettyRemotingClient.registerProcessor(LaopopoProtocol.SUBCRIBE_RESULT, new DefaultConsumerRegistryProcessor(this), null);
 		this.registryNettyRemotingClient.registerProcessor(LaopopoProtocol.SUBCRIBE_SERVICE_CANCEL, new DefaultConsumerRegistryProcessor(this), null);
+		this.registryNettyRemotingClient.registerProcessor(LaopopoProtocol.CHANGE_LOADBALANCE, new DefaultConsumerRegistryProcessor(this), null);
 	}
 
 	@Override

@@ -18,7 +18,7 @@ import org.laopopo.common.exception.remoting.RemotingException;
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.transport.body.AckCustomBody;
 import org.laopopo.common.transport.body.PublishServiceCustomBody;
-import org.laopopo.common.transport.body.ReviewServiceCustomBody;
+import org.laopopo.common.transport.body.ManagerServiceCustomBody;
 import org.laopopo.common.utils.Constants;
 import org.laopopo.common.utils.NamedThreadFactory;
 import org.laopopo.common.utils.Pair;
@@ -263,7 +263,7 @@ public class DefaultProvider implements Provider {
 			return remotingTransporter;
 		}
 		// 请求体
-		ReviewServiceCustomBody subcribeRequestCustomBody = serializerImpl().readObject(request.bytes(), ReviewServiceCustomBody.class);
+		ManagerServiceCustomBody subcribeRequestCustomBody = serializerImpl().readObject(request.bytes(), ManagerServiceCustomBody.class);
 		// 服务名
 		String serviceName = subcribeRequestCustomBody.getSerivceName();
 

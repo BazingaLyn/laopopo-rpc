@@ -12,6 +12,7 @@ import java.util.List;
 
 import org.laopopo.common.exception.remoting.RemotingSendRequestException;
 import org.laopopo.common.exception.remoting.RemotingTimeoutException;
+import org.laopopo.common.loadbalance.LoadBalanceStrategy;
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.rpc.RegisterMeta;
 import org.laopopo.common.transport.body.AckCustomBody;
@@ -51,15 +52,16 @@ public class RegistryConsumerManager {
 	 * 通知相关的订阅者服务的信息
 	 * 
 	 * @param meta
+	 * @param loadBalanceStrategy 
 	 * @throws InterruptedException
 	 * @throws RemotingTimeoutException
 	 * @throws RemotingSendRequestException
 	 */
-	public void notifyMacthedSubscriber(final RegisterMeta meta) throws RemotingSendRequestException, RemotingTimeoutException, InterruptedException {
+	public void notifyMacthedSubscriber(final RegisterMeta meta, LoadBalanceStrategy loadBalanceStrategy) throws RemotingSendRequestException, RemotingTimeoutException, InterruptedException {
 
 		// 构建订阅通知的主体传输对象
 		SubcribeResultCustomBody subcribeResultCustomBody = new SubcribeResultCustomBody();
-		buildSubcribeResultCustomBody(meta, subcribeResultCustomBody);
+		buildSubcribeResultCustomBody(meta, subcribeResultCustomBody,loadBalanceStrategy);
 
 		// 传送给consumer对象的RemotingTransporter
 		RemotingTransporter sendConsumerRemotingTrasnporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.SUBCRIBE_RESULT,
@@ -73,7 +75,7 @@ public class RegistryConsumerManager {
 
 		// 构建订阅通知的主体传输对象
 		SubcribeResultCustomBody subcribeResultCustomBody = new SubcribeResultCustomBody();
-		buildSubcribeResultCustomBody(meta, subcribeResultCustomBody);
+		buildSubcribeResultCustomBody(meta, subcribeResultCustomBody,null);
 
 		RemotingTransporter sendConsumerRemotingTrasnporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.SUBCRIBE_SERVICE_CANCEL,
 				subcribeResultCustomBody);
@@ -88,6 +90,7 @@ public class RegistryConsumerManager {
 	 * 检查messagesNonAcks中是否有发送失败的信息，然后再次发送
 	 */
 	public void checkSendFailedMessage(){
+		
 		ConcurrentSet<MessageNonAck> nonAcks = messagesNonAcks;
 		messagesNonAcks.clear();
 		if(nonAcks != null){
@@ -122,11 +125,13 @@ public class RegistryConsumerManager {
 	 * 
 	 * @param meta
 	 * @param subcribeResultCustomBody
+	 * @param loadBalanceStrategy 
 	 */
-	private void buildSubcribeResultCustomBody(RegisterMeta meta, SubcribeResultCustomBody subcribeResultCustomBody) {
+	private void buildSubcribeResultCustomBody(RegisterMeta meta, SubcribeResultCustomBody subcribeResultCustomBody, LoadBalanceStrategy loadBalanceStrategy) {
 		List<RegisterMeta> registerMetas = new ArrayList<RegisterMeta>();
 
 		registerMetas.add(meta);
+		subcribeResultCustomBody.setLoadBalanceStrategy(null == loadBalanceStrategy ? LoadBalanceStrategy.WEIGHTINGRANDOM : loadBalanceStrategy);
 		subcribeResultCustomBody.setRegisterMeta(registerMetas);
 	}
 
