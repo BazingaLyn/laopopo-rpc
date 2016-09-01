@@ -42,4 +42,12 @@ public class SubcribeResultCustomBody implements CommonCustomBody {
 		this.loadBalanceStrategy = loadBalanceStrategy;
 	}
 
+	public String getServiceName() {
+		return serviceName;
+	}
+
+	public void setServiceName(String serviceName) {
+		this.serviceName = serviceName;
+	}
+
 }

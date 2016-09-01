@@ -11,6 +11,6 @@ public enum LoadBalanceStrategy {
 	
 	RANDOM, //随机
 	WEIGHTINGRANDOM, //加权随机
-	POLLING, //轮询
+	ROUNDROBIN, //轮询
 
 }

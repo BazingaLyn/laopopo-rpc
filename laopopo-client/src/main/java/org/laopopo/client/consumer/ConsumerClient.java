@@ -49,17 +49,18 @@ public class ConsumerClient extends DefaultConsumer {
 		body.setArgs(args);
 		body.setServiceName(serviceName);
 		RemotingTransporter request = RemotingTransporter.createRequestTransporter(LaopopoProtocol.RPC_REQUEST, body);
-		RemotingTransporter response = sendRpcRequestToProvider(channelGroup.next(),request);
+		RemotingTransporter response = sendRpcRequestToProvider(channelGroup.next(),request,3000l);
 		ResponseCustomBody customBody = serializerImpl().readObject(response.bytes(), ResponseCustomBody.class);
 		return customBody.getResultWrapper().getResult();
 	}
 
-	private RemotingTransporter sendRpcRequestToProvider(Channel channel, RemotingTransporter request) throws RemotingTimeoutException, RemotingSendRequestException, InterruptedException {
-		return super.providerNettyRemotingClient.invokeSyncImpl(channel, request, 3000l);
+	@Override
+	public RemotingTransporter sendRpcRequestToProvider(Channel channel, RemotingTransporter request,long timeout) throws RemotingTimeoutException, RemotingSendRequestException, InterruptedException {
+		return super.providerNettyRemotingClient.invokeSyncImpl(channel, request, timeout);
 	}
 
 	private ChannelGroup getAllMatchedChannel(String serviceName) {
-		CopyOnWriteArrayList<ChannelGroup> channelGroups = ServiceChannelGroup.getChannelGroupByServiceName(serviceName);
+		CopyOnWriteArrayList<ChannelGroup> channelGroups = getChannelGroupByServiceName(serviceName);
 		return null == channelGroups ? null :loadBalance(channelGroups);
 	}
 

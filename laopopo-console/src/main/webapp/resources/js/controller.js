@@ -99,7 +99,7 @@ function detailFormatter(index, row) {
 				+'<th style="text-align: center; vertical-align: middle;">服务提供地址</th>'
 				+'<th style="text-align: center; vertical-align: middle;">权重</th>'
 				+'<th style="text-align: center; vertical-align: middle;">是否可降级</th>'
-				+'<th style="text-align: center; vertical-align: middle;">是否可降级</th>'
+				+'<th style="text-align: center; vertical-align: middle;">降级服务描述</th>'
 				+'</tr></thead><tbody>'
 				 + '<tr><td>Tanmay</td><td>Bangalore</td></tr><tr><td>Sachin</td><td>Mumbai</td></tr></tbody></table>');
 	});

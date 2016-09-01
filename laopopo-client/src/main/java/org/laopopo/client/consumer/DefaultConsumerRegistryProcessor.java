@@ -46,7 +46,7 @@ public class DefaultConsumerRegistryProcessor implements NettyRequestProcessor {
 			// 回复ack信息
 			return this.defaultConsumer.getConsumerManager().handlerSubscribeResultCancel(request, ctx.channel());
 		case CHANGE_LOADBALANCE:
-			// 回复ack信息 //TODO
+			// 回复ack信息 
 			return this.defaultConsumer.getConsumerManager().handlerServiceLoadBalance(request, ctx.channel());
 		}
 

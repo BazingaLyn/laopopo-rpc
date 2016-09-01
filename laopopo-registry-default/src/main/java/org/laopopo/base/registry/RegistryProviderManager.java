@@ -1,12 +1,6 @@
 package org.laopopo.base.registry;
 
 import static org.laopopo.common.serialization.SerializerHolder.serializerImpl;
-import static org.laopopo.common.utils.Constants.ACK_OPERATION_FAILURE;
-import static org.laopopo.common.utils.Constants.ACK_OPERATION_SUCCESS;
-import static org.laopopo.common.utils.Constants.ACK_PUBLISH_CANCEL_FAILURE;
-import static org.laopopo.common.utils.Constants.ACK_PUBLISH_CANCEL_SUCCESS;
-import static org.laopopo.common.utils.Constants.ACK_PUBLISH_FAILURE;
-import static org.laopopo.common.utils.Constants.ACK_PUBLISH_SUCCESS;
 import io.netty.channel.Channel;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
@@ -108,7 +102,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 			RemotingTimeoutException, InterruptedException {
 
 		// 准备好ack信息返回个provider，悲观主义，默认返回失败ack，要求provider重新发送请求
-		AckCustomBody ackCustomBody = new AckCustomBody(remotingTransporter.getOpaque(), false, ACK_PUBLISH_FAILURE);
+		AckCustomBody ackCustomBody = new AckCustomBody(remotingTransporter.getOpaque(), false);
 		RemotingTransporter responseTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody,
 				remotingTransporter.getOpaque());
 
@@ -146,7 +140,6 @@ public class RegistryProviderManager implements RegistryProviderServer {
 			globalServiceLoadBalance.put(serviceName, LoadBalanceStrategy.WEIGHTINGRANDOM);
 
 			// 判断provider发送的信息已经被成功的存储的情况下，则告之服务注册成功
-			ackCustomBody.setDesc(ACK_PUBLISH_SUCCESS);
 			ackCustomBody.setSuccess(true);
 
 			// 如果审核通过，则通知相关服务的订阅者
@@ -194,7 +187,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 	 */
 	private RemotingTransporter handleModifyLoadBalance(long opaque, ManagerServiceCustomBody managerServiceCustomBody) {
 
-		AckCustomBody ackCustomBody = new AckCustomBody(opaque, false, ACK_OPERATION_FAILURE);
+		AckCustomBody ackCustomBody = new AckCustomBody(opaque, false);
 		RemotingTransporter responseTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, opaque);
 
 		String serviceName = managerServiceCustomBody.getSerivceName();
@@ -207,7 +200,6 @@ public class RegistryProviderManager implements RegistryProviderServer {
 				return responseTransporter;
 			}
 
-			ackCustomBody.setDesc(ACK_PUBLISH_SUCCESS);
 			ackCustomBody.setSuccess(true);
 
 			if (currentLoadBalanceStrategy != balanceStrategy) {
@@ -234,7 +226,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 			RemotingTimeoutException, InterruptedException {
 
 		// 准备好ack信息返回个provider，悲观主义，默认返回失败ack，要求provider重新发送请求
-		AckCustomBody ackCustomBody = new AckCustomBody(opaque, false, ACK_OPERATION_FAILURE);
+		AckCustomBody ackCustomBody = new AckCustomBody(opaque, false);
 		RemotingTransporter responseTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, opaque);
 
 		String serviceName = managerServiceCustomBody.getSerivceName(); // 服务名
@@ -251,7 +243,6 @@ public class RegistryProviderManager implements RegistryProviderServer {
 			RegisterMeta meta = maps.get(address);
 			meta.setWeight(weight);
 
-			ackCustomBody.setDesc(ACK_PUBLISH_SUCCESS);
 			ackCustomBody.setSuccess(true);
 
 			// 如果审核通过，则通知相关服务的订阅者
@@ -277,7 +268,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 			RemotingTimeoutException, InterruptedException {
 
 		// 准备好ack信息返回个provider，悲观主义，默认返回失败ack，要求provider重新发送请求
-		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false, ACK_PUBLISH_CANCEL_FAILURE);
+		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false);
 		RemotingTransporter responseTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, request.getOpaque());
 
 		// 接收到主体信息
@@ -287,7 +278,6 @@ public class RegistryProviderManager implements RegistryProviderServer {
 
 		handlePublishCancel(meta, channel);
 
-		ackCustomBody.setDesc(ACK_PUBLISH_CANCEL_SUCCESS);
 		ackCustomBody.setSuccess(true);
 
 		globalProviderChannelMetaMap.remove(meta.getAddress());
@@ -522,7 +512,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 	 */
 	private RemotingTransporter handleReview(String serviceName, Address address, long requestId, ServiceReviewState reviewState) {
 
-		AckCustomBody ackCustomBody = new AckCustomBody(requestId, false, ACK_OPERATION_FAILURE);
+		AckCustomBody ackCustomBody = new AckCustomBody(requestId, false);
 		RemotingTransporter remotingTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, requestId);
 
 		// 获取到这个服务的所有
@@ -539,13 +529,11 @@ public class RegistryProviderManager implements RegistryProviderServer {
 				RegisterMeta data = maps.get(address);
 
 				if (data != null) {
-					ackCustomBody.setDesc(ACK_OPERATION_SUCCESS);
 					ackCustomBody.setSuccess(true);
 					data.setIsReviewed(reviewState);
 				}
 			} else { // 如果传递的地址是null，说明是审核该服务的所有地址
 				if (null != maps.values() && maps.values().size() > 0) {
-					ackCustomBody.setDesc(ACK_OPERATION_SUCCESS);
 					ackCustomBody.setSuccess(true);
 					for (RegisterMeta meta : maps.values()) {
 						meta.setIsReviewed(reviewState);
@@ -559,7 +547,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 	private RemotingTransporter handleDegradeService(RemotingTransporter request, Channel channel) throws RemotingSendRequestException,
 			RemotingTimeoutException, InterruptedException {
 
-		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false, ACK_OPERATION_FAILURE);
+		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false);
 		RemotingTransporter remotingTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, request.getOpaque());
 
 		ManagerServiceCustomBody body = serializerImpl().readObject(request.bytes(), ManagerServiceCustomBody.class);

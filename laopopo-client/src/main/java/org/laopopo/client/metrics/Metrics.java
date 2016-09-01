@@ -19,10 +19,11 @@ import com.codahale.metrics.Slf4jReporter;
 import com.codahale.metrics.Timer;
 
 /**
- * 性能测量工具
+ * 
  * @author BazingaLyn
- *
- * @time 2016年6月27日
+ * @description
+ * @time
+ * @modifytime
  */
 public class Metrics {
 
@@ -70,7 +71,7 @@ public class Metrics {
 					metricsReporter = new MetricsReporter();
 					metricsReporter.setServiceName(serviceName);
 				}
-				Meter meter = map.get(serviceName);
+				Meter meter = map.get(serviceName+"::rejection");
 				metricsReporter.setFailCount(meter.getCount()); //设置失败次数
 			}
 		}
@@ -84,7 +85,7 @@ public class Metrics {
 					metricsReporter = new MetricsReporter();
 					metricsReporter.setServiceName(serviceName);
 				}
-				Histogram Histogram = histograms.get(serviceName);
+				Histogram Histogram = histograms.get(serviceName+"::requestSize");
 				metricsReporter.setHandlerDataAvgSize(Histogram.getSnapshot().getMean()); //设置请求体的平均大小
 			}
 		}
@@ -98,7 +99,7 @@ public class Metrics {
 					metricsReporter = new MetricsReporter();
 					metricsReporter.setServiceName(serviceName);
 				}
-				Timer currentTime = timer.get(serviceName);
+				Timer currentTime = timer.get(serviceName+"::processing");
 				metricsReporter.setCallCount(currentTime.getCount()); //设置请求的次数
 				metricsReporter.setHandlerAvgTime(currentTime.getSnapshot().getMean());
 			}

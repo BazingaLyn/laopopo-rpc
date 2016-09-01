@@ -17,14 +17,10 @@ public class AckCustomBody implements CommonCustomBody {
 	//是否消费处理成功
 	private boolean success;
 	
-	//消费描述
-    private String desc;
     
-    
-	public AckCustomBody(long requestId, boolean success, String desc) {
+	public AckCustomBody(long requestId, boolean success) {
 		this.requestId = requestId;
 		this.success = success;
-		this.desc = desc;
 	}
 
 	@Override
@@ -47,17 +43,9 @@ public class AckCustomBody implements CommonCustomBody {
 		this.success = success;
 	}
 
-	public String getDesc() {
-		return desc;
-	}
-
-	public void setDesc(String desc) {
-		this.desc = desc;
-	}
-
 	@Override
 	public String toString() {
-		return "AckCustomBody [requestId=" + requestId + ", success=" + success + ", desc=" + desc + "]";
+		return "AckCustomBody [requestId=" + requestId + ", success=" + success + "]";
 	}
 	
 

@@ -5,8 +5,6 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
@@ -32,7 +30,7 @@ import org.slf4j.LoggerFactory;
  * @time 2016年8月18日
  * @modifytime
  */
-public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
+public abstract class DefaultConsumer extends AbstractDefaultConsumer {
 
 	private static final Logger logger = LoggerFactory.getLogger(DefaultConsumer.class);
 
@@ -50,8 +48,6 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 
 	private ConsumerManager consumerManager;
 	
-	protected final ConcurrentMap<UnresolvedAddress, ChannelGroup> addressGroups = new ConcurrentHashMap<UnresolvedAddress, ChannelGroup>();
-
 	private Channel registyChannel;
 
 	public DefaultConsumer(NettyClientConfig registryClientConfig, NettyClientConfig providerClientConfig, ConsumerConfig consumerConfig) {
@@ -130,9 +126,9 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 							}else{
 								onSucceed(signalNeeded.getAndSet(false));
 							}
-							ServiceChannelGroup.addIfAbsent(service,group);
+							addChannelGroup(service,group);
 						}else if(event == NotifyEvent.CHILD_REMOVED){
-							ServiceChannelGroup.removedIfAbsent(service, group);
+							removedIfAbsent(service, group);
 						}
 					}
 				});
@@ -140,9 +136,7 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 
 			@Override
 			public boolean waitForAvailable(long timeoutMillis) {
-				System.out.println(service +" GGGGGGGGG");
 				if (isServiceAvailable(service)) {
-					System.out.println(service +" is ready");
                     return true;
                 }
 				boolean available = false;
@@ -168,7 +162,7 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 			}
 
 			private boolean isServiceAvailable(String service) {
-				CopyOnWriteArrayList<ChannelGroup> list = ServiceChannelGroup.getChannelGroupByServiceName(service);
+				CopyOnWriteArrayList<ChannelGroup> list = DefaultConsumer.super.getChannelGroupByServiceName(service);
 				if(list == null){
 					return false;
 				}else{
@@ -204,12 +198,18 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 			this.defaultConsumerRegistry.subcribeService(subcribeServices,listener);
 		}
 	}
+	
+	@Override
+	public boolean addChannelGroup(String serviceName, ChannelGroup group) {
+		return DefaultConsumer.super.addIfAbsent(serviceName, group);
+	}
+	
+	@Override
+	public boolean removeChannelGroup(String serviceName, ChannelGroup group) {
+		return DefaultConsumer.super.removedIfAbsent(serviceName, group);
+	}
 
-//	private void subcribeService(String serviceNames) {
-//		if (serviceNames != null) {
-//			this.defaultConsumerRegistry.subcribeService(serviceNames);
-//		}
-//	}
+ 
 
 	@Override
 	public void start() {
@@ -222,6 +222,7 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 	@Override
 	public void getOrUpdateHealthyChannel() {
 
+		//获取到注册中心的地址
 		String addresses = this.registryClientConfig.getDefaultAddress();
 
 		if (registyChannel != null && registyChannel.isActive() && registyChannel.isWritable())
@@ -231,7 +232,10 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 			logger.error("registry address is empty");
 			return;
 		}
+		
+		//与注册中心连接的时候重试次数
 		int retryConnectionTimes = this.consumerConfig.getRetryConnectionRegistryTimes();
+		//连接给每次注册中心的时候最大的超时时间
 		long maxTimeout = this.consumerConfig.getMaxRetryConnectionRegsitryTime();
 
 		String[] adds = addresses.split(",");
@@ -242,11 +246,13 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 				return;
 
 			String currentAddress = adds[i];
+			//开始计时
 			final long beginTimestamp = System.currentTimeMillis();
 			long endTimestamp = beginTimestamp;
 
 			int times = 0;
 
+			//当重试次数小于最大次数且每个实例重试的时间小于最大的时间的时候，不断重试
 			for (; times < retryConnectionTimes && (endTimestamp - beginTimestamp) < maxTimeout; times++) {
 				try {
 					Channel channel = registryNettyRemotingClient.createChannel(currentAddress);
@@ -263,7 +269,6 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 				}
 			}
 		}
-
 	}
 
 	public NettyRemotingClient getRegistryNettyRemotingClient() {
@@ -322,7 +327,7 @@ public abstract class DefaultConsumer implements Consumer, ConsumerRegistry {
 		this.defaultConsumerRegistry = defaultConsumerRegistry;
 	}
 	
-	private ChannelGroup group(UnresolvedAddress address) {
+	public ChannelGroup group(UnresolvedAddress address) {
 
 		ChannelGroup group = addressGroups.get(address);
 		if (group == null) {

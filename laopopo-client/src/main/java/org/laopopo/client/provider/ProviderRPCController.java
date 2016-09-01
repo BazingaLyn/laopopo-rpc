@@ -72,9 +72,9 @@ public class ProviderRPCController {
 			request.setCustomHeader(body);
 			serviceName = body.getServiceName();
 			
-			rejectionMeter = Metrics.meter(serviceName);
-			requestSizeHistogram = Metrics.histogram(serviceName);
-			processingTimer = Metrics.timer(serviceName);
+			rejectionMeter = Metrics.meter(serviceName+"::rejection");
+			requestSizeHistogram = Metrics.histogram(serviceName+"::requestSize");
+			processingTimer = Metrics.timer(serviceName+"::processing");
 			
 			requestSizeHistogram.update(bytes.length);
 		} catch (Exception e) {

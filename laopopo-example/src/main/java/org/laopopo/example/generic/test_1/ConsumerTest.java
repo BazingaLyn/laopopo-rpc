@@ -6,7 +6,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.laopopo.client.consumer.Consumer.SubscribeManager;
 import org.laopopo.client.consumer.ConsumerClient;
 import org.laopopo.client.consumer.ConsumerConfig;
-import org.laopopo.client.consumer.ServiceChannelGroup;
 import org.laopopo.common.utils.ChannelGroup;
 import org.laopopo.remoting.netty.NettyClientConfig;
 import org.slf4j.Logger;
@@ -15,6 +14,8 @@ import org.slf4j.LoggerFactory;
 public class ConsumerTest {
 
 	private static final Logger logger = LoggerFactory.getLogger(ConsumerTest.class);
+	
+	private static ConsumerClient commonclient;
 
 	public static void main(String[] args) throws Throwable {
 
@@ -31,6 +32,7 @@ public class ConsumerTest {
 
 		client.start();
 
+		commonclient = client;
 		SubscribeManager subscribeManager = client.subscribeService("LAOPOPO.TEST.SAYHELLO");
 
 		if (!subscribeManager.waitForAvailable(3000l)) {
@@ -64,7 +66,9 @@ public class ConsumerTest {
 				try {
 					logger.info("统计中");
 					Thread.sleep(10000);
-					ConcurrentMap<String, CopyOnWriteArrayList<ChannelGroup>> result = ServiceChannelGroup.getGroups();
+					
+					@SuppressWarnings("static-access")
+					ConcurrentMap<String, CopyOnWriteArrayList<ChannelGroup>> result = commonclient.getGroups();
 					if(result != null){
 						for(String serviceName:result.keySet()){
 							System.out.println(serviceName);

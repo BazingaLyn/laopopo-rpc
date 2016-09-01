@@ -1,10 +1,6 @@
 package org.laopopo.client.consumer;
 
 import static org.laopopo.common.serialization.SerializerHolder.serializerImpl;
-import static org.laopopo.common.utils.Constants.ACK_SUBCRIBE_SERVICE_CANCEL_FAIL;
-import static org.laopopo.common.utils.Constants.ACK_SUBCRIBE_SERVICE_CANCEL_SUCCESS;
-import static org.laopopo.common.utils.Constants.ACK_SUBCRIBE_SERVICE_FAILED;
-import static org.laopopo.common.utils.Constants.ACK_SUBCRIBE_SERVICE_SUCCESS;
 import io.netty.channel.Channel;
 
 import java.util.ArrayList;
@@ -15,6 +11,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.laopopo.client.consumer.NotifyListener.NotifyEvent;
+import org.laopopo.common.loadbalance.LoadBalanceStrategy;
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.rpc.RegisterMeta;
 import org.laopopo.common.transport.body.AckCustomBody;
@@ -33,26 +30,28 @@ import org.slf4j.LoggerFactory;
 public class ConsumerManager {
 
 	private static final Logger logger = LoggerFactory.getLogger(ConsumerManager.class);
-
-	private DefaultConsumer defaultConsumer;
-
-	private final ReentrantReadWriteLock registriesLock = new ReentrantReadWriteLock();
-
-	private final Map<String, List<RegisterMeta>> registries = new ConcurrentHashMap<String, List<RegisterMeta>>();
 	
+	private DefaultConsumer defaultConsumer; //consumer模块的代码手持defaultConsumer好办事
+	private final ReentrantReadWriteLock registriesLock = new ReentrantReadWriteLock();
+	private final Map<String, List<RegisterMeta>> registries = new ConcurrentHashMap<String, List<RegisterMeta>>();
 
 	public ConsumerManager(DefaultConsumer defaultConsumer) {
 		this.defaultConsumer = defaultConsumer;
 	}
-    /**
-     * 处理服务的订阅结果
-     * @param request
-     * @param channel
-     * @return
-     */
+
+	/**
+	 * 处理服务的订阅结果
+	 * @param request
+	 * @param channel
+	 * @return
+	 */
 	public RemotingTransporter handlerSubcribeResult(RemotingTransporter request, Channel channel) {
 
-		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false, ACK_SUBCRIBE_SERVICE_FAILED);
+		if (logger.isDebugEnabled()) {
+			logger.debug("handler subcribe result [{}] and channel [{}]", request, channel);
+		}
+
+		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false);
 		RemotingTransporter responseTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, request.getOpaque());
 
 		SubcribeResultCustomBody subcribeResultCustomBody = serializerImpl().readObject(request.bytes(), SubcribeResultCustomBody.class);
@@ -61,27 +60,27 @@ public class ConsumerManager {
 		if (subcribeResultCustomBody != null && subcribeResultCustomBody.getRegisterMeta() != null && !subcribeResultCustomBody.getRegisterMeta().isEmpty()) {
 
 			for (RegisterMeta registerMeta : subcribeResultCustomBody.getRegisterMeta()) {
-				
-				if(null == serviceName){
+
+				if (null == serviceName) {
 					serviceName = registerMeta.getServiceName();
 				}
-				notify(serviceName, registerMeta,NotifyEvent.CHILD_ADDED);
+				notify(serviceName, registerMeta, NotifyEvent.CHILD_ADDED);
 			}
 		}
 
-		ackCustomBody.setDesc(ACK_SUBCRIBE_SERVICE_SUCCESS);
 		ackCustomBody.setSuccess(true);
 		return responseTransporter;
 	}
 
 	/**
 	 * 处理服务取消的时候逻辑处理
+	 * 
 	 * @param request
 	 * @param channel
 	 * @return
 	 */
 	public RemotingTransporter handlerSubscribeResultCancel(RemotingTransporter request, Channel channel) {
-		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false, ACK_SUBCRIBE_SERVICE_CANCEL_FAIL);
+		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false);
 		RemotingTransporter responseTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, request.getOpaque());
 
 		SubcribeResultCustomBody subcribeResultCustomBody = serializerImpl().readObject(request.bytes(), SubcribeResultCustomBody.class);
@@ -89,15 +88,39 @@ public class ConsumerManager {
 		if (subcribeResultCustomBody != null && subcribeResultCustomBody.getRegisterMeta() != null && !subcribeResultCustomBody.getRegisterMeta().isEmpty()) {
 
 			for (RegisterMeta registerMeta : subcribeResultCustomBody.getRegisterMeta()) {
-				notify(registerMeta.getServiceName(), registerMeta,NotifyEvent.CHILD_REMOVED);
+				notify(registerMeta.getServiceName(), registerMeta, NotifyEvent.CHILD_REMOVED);
 			}
 		}
-
-		ackCustomBody.setDesc(ACK_SUBCRIBE_SERVICE_CANCEL_SUCCESS);
 		ackCustomBody.setSuccess(true);
 		return responseTransporter;
 	}
 
+	/**
+	 * 处理注册中心发送过来的负载均衡策略的变化
+	 * @param request
+	 * @param channel
+	 * @return
+	 */
+	public RemotingTransporter handlerServiceLoadBalance(RemotingTransporter request, Channel channel) {
+		
+		if(logger.isDebugEnabled()){
+			logger.debug("handler change loadBalance strategy [{}] and channel [{}]",request,channel);
+		}
+
+		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false);
+		RemotingTransporter responseTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, request.getOpaque());
+
+		SubcribeResultCustomBody subcribeResultCustomBody = serializerImpl().readObject(request.bytes(), SubcribeResultCustomBody.class);
+
+		String serviceName = subcribeResultCustomBody.getServiceName();
+
+		LoadBalanceStrategy balanceStrategy = subcribeResultCustomBody.getLoadBalanceStrategy();
+
+		defaultConsumer.setServiceLoadBalanceStrategy(serviceName, balanceStrategy);
+
+		ackCustomBody.setSuccess(true);
+		return responseTransporter;
+	}
 
 	/************************* ↑为核心方法，下面为内部方法 ************************/
 
@@ -130,17 +153,13 @@ public class ConsumerManager {
 		}
 
 		if (notifyNeeded) {
-			
+
 			NotifyListener listener = this.defaultConsumer.getDefaultConsumerRegistry().getServiceMatchedNotifyListener().get(serviceName);
-			if(null != listener){
+			if (null != listener) {
 				listener.notify(registerMeta, event);
 			}
-			
+
 		}
 	}
-	public RemotingTransporter handlerServiceLoadBalance(RemotingTransporter request, Channel channel) {
-		return null;
-	}
-
 
 }

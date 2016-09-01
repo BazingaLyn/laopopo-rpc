@@ -2,6 +2,7 @@ package org.laopopo.client.provider;
 
 import io.netty.channel.Channel;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 
@@ -38,8 +39,9 @@ public class ProviderMonitorController {
 		ConcurrentMap<String, MetricsReporter> metricsMap = Metrics.getGlobalMetricsReporter();
 		if (metricsMap != null && metricsMap.keySet() != null && metricsMap.values() != null) {
 
-			List<MetricsReporter> reporters = (List<MetricsReporter>) metricsMap.values();
+			List<MetricsReporter> reporters = new ArrayList<MetricsReporter>();
 
+			reporters.addAll( metricsMap.values());
 			ProviderMetricsCustomBody body = new ProviderMetricsCustomBody();
 			body.setMetricsReporter(reporters);
 			RemotingTransporter remotingTransporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.MANAGER_SERVICE, body);

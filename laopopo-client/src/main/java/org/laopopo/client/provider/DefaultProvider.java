@@ -1,7 +1,6 @@
 package org.laopopo.client.provider;
 
 import static org.laopopo.common.serialization.SerializerHolder.serializerImpl;
-import static org.laopopo.common.utils.Constants.ACK_OPERATION_SUCCESS;
 import io.netty.channel.Channel;
 
 import java.util.List;
@@ -17,9 +16,8 @@ import org.laopopo.client.provider.model.ServiceWrapper;
 import org.laopopo.common.exception.remoting.RemotingException;
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.transport.body.AckCustomBody;
-import org.laopopo.common.transport.body.PublishServiceCustomBody;
 import org.laopopo.common.transport.body.ManagerServiceCustomBody;
-import org.laopopo.common.utils.Constants;
+import org.laopopo.common.transport.body.PublishServiceCustomBody;
 import org.laopopo.common.utils.NamedThreadFactory;
 import org.laopopo.common.utils.Pair;
 import org.laopopo.remoting.ConnectionUtils;
@@ -255,7 +253,7 @@ public class DefaultProvider implements Provider {
 	public RemotingTransporter handlerDegradeService(RemotingTransporter request, Channel channel) {
 
 		// 默认的ack返回体
-		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false, Constants.ACK_OPERATION_FAILURE);
+		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false);
 		RemotingTransporter remotingTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, request.getOpaque());
 
 		// 发布的服务是空的时候，默认返回操作失败
@@ -286,7 +284,6 @@ public class DefaultProvider implements Provider {
 			CurrentServiceState currentServiceState = pair.getKey();
 			// 如果已经降级了，则直接返回成功
 			currentServiceState.getHasDegrade().set(!currentServiceState.getHasDegrade().get());
-			ackCustomBody.setDesc(ACK_OPERATION_SUCCESS);
 			ackCustomBody.setSuccess(true);
 		}
 		return remotingTransporter;
