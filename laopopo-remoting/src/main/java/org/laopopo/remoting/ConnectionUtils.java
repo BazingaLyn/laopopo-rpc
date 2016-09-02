@@ -7,6 +7,7 @@ import io.netty.channel.ChannelFutureListener;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
+import org.laopopo.common.rpc.RegisterMeta.Address;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +32,16 @@ public class ConnectionUtils {
         }
 
         return "";
+    }
+	
+	public static Address parseChannelRemoteAddress(final Channel channel) {
+         String address = parseChannelRemoteAddr(channel);
+         if("".equals(address)){
+        	 return null;
+         }
+         String[] strs = address.split(":");
+         return new Address(strs[0], Integer.parseInt(strs[1]));
+         
     }
 
 	public static SocketAddress string2SocketAddress(String addr) {

@@ -5,7 +5,7 @@ import java.util.List;
 import org.laopopo.common.exception.remoting.RemotingCommmonCustomException;
 import org.laopopo.common.metrics.ServiceMetrics;
 
-public class RegistryMetricsCustomBody implements CommonCustomBody {
+public class MetricsCustomBody implements CommonCustomBody {
 	
 	private List<ServiceMetrics> serviceMetricses;
 

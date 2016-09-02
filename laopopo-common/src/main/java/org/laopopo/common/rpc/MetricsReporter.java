@@ -17,7 +17,6 @@ public class MetricsReporter implements Serializable {
 	 */
 	private static final long serialVersionUID = -3846340000197732373L;
 	
-	
 	private String serviceName;        //统计的服务名
 	private Long callCount;            //调用的次数
 	private Long failCount;            //失败的次数
@@ -55,7 +54,6 @@ public class MetricsReporter implements Serializable {
 	public void setHandlerDataAvgSize(Double handlerDataAvgSize) {
 		this.handlerDataAvgSize = handlerDataAvgSize;
 	}
-	
 	@Override
 	public String toString() {
 		return "MetricsReporter [serviceName=" + serviceName + ", callCount=" + callCount + ", failCount=" + failCount + ", handlerAvgTime=" + handlerAvgTime

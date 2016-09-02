@@ -20,8 +20,9 @@ import org.laopopo.common.metrics.ServiceMetrics.ConsumerInfo;
 import org.laopopo.common.metrics.ServiceMetrics.ProviderInfo;
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.rpc.ManagerServiceRequestType;
+import org.laopopo.common.rpc.RegisterMeta.Address;
 import org.laopopo.common.transport.body.ManagerServiceCustomBody;
-import org.laopopo.common.transport.body.RegistryMetricsCustomBody;
+import org.laopopo.common.transport.body.MetricsCustomBody;
 import org.laopopo.common.utils.NamedThreadFactory;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.laopopo.remoting.netty.NettyClientConfig;
@@ -81,7 +82,7 @@ public class KaleidoscopeInfo {
 			public void run() {
 				// 延迟60秒，每隔60秒开始 定时向监控中心发送请求，获取所有的服务被调用次数的信息和失败的信息
 				try {
-					KaleidoscopeInfo.this.getLastMonitorServerInfo();
+					KaleidoscopeInfo.this.refreshMonitorServerInfo();
 				} catch (Exception e) {
 					logger.warn("schedule get monitorInfos from monitorServer failed [{}]", e.getMessage());
 				}
@@ -89,8 +90,65 @@ public class KaleidoscopeInfo {
 		}, 60, 60, TimeUnit.SECONDS);
 	}
 
-	protected void getLastMonitorServerInfo() {
+	protected void refreshMonitorServerInfo() throws InterruptedException {
+		Set<String> serviceNames = globalServiceMetrics.keySet();
+		if(null != serviceNames && !serviceNames.isEmpty()){
+			for(String str:serviceNames){
+				getLastMonitorServerInfo(str);
+				Thread.sleep(300l);
+			}
+		}
+	}
 
+	protected void getLastMonitorServerInfo(String serviceName) {
+
+		ManagerServiceCustomBody managerServiceCustomBody = new ManagerServiceCustomBody();
+		// 设置属性为==>统计
+		managerServiceCustomBody.setManagerServiceRequestType(ManagerServiceRequestType.METRICS);
+		managerServiceCustomBody.setSerivceName(serviceName);
+		RemotingTransporter requestTransporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.MANAGER_SERVICE, managerServiceCustomBody);
+		
+		if(this.monitorAddress != null){
+			
+			RemotingTransporter responseTransporter;
+			try {
+				responseTransporter = this.nettyRemotingClient.invokeSync(monitorAddress, requestTransporter, 3000l);
+				MetricsCustomBody registryMetricsCustomBody = serializerImpl().readObject(responseTransporter.bytes(),
+						MetricsCustomBody.class);
+
+				List<ServiceMetrics> serviceMetricses = registryMetricsCustomBody.getServiceMetricses();
+				if(serviceMetricses != null){
+					ServiceMetrics metrics = serviceMetricses.get(0);
+					
+					synchronized (globalServiceMetrics) {
+						ServiceMetrics serviceMetrics = globalServiceMetrics.get(serviceName);
+						serviceMetrics.setHandlerAvgTime(metrics.getHandlerAvgTime());
+						serviceMetrics.setTotalCallCount(metrics.getTotalCallCount());
+						serviceMetrics.setTotalFailCount(metrics.getTotalFailCount());
+						serviceMetrics.setTotalHandlerRequestBodySize(metrics.getTotalHandlerRequestBodySize());
+						ConcurrentMap<Address, ProviderInfo> existMap = serviceMetrics.getProviderMaps();
+						ConcurrentMap<Address, ProviderInfo> remotingMap = metrics.getProviderMaps();
+						for(Address address : existMap.keySet()){
+							
+							 if(remotingMap.containsKey(address)){
+								 ProviderInfo existInfo = existMap.get(address);
+								 if(null != existInfo && remotingMap.get(address) != null){
+									 ProviderInfo remotingInfo = remotingMap.get(address);
+									 existInfo.setCallCount(remotingInfo.getCallCount());
+									 existInfo.setFailCount(remotingInfo.getFailCount());
+									 existInfo.setHandlerAvgTime(remotingInfo.getHandlerAvgTime());
+									 existInfo.setHandlerDataAvgSize(remotingInfo.getHandlerDataAvgSize());
+								 }
+							 }
+						}
+					}
+				}
+				
+			} catch (InterruptedException | RemotingException e) {
+				logger.error("connection to monitor error address [{}] and exception [{}]",monitorAddress,e.getMessage());
+			}
+			
+		}
 	}
 
 	protected void getLastRegistryServerInfo() {
@@ -103,12 +161,13 @@ public class KaleidoscopeInfo {
 		if (this.registryAddress != null) {
 
 			String[] registryAddresses = this.registryAddress.split(",");
+			
 			for (int index = 0; index < registryAddresses.length; index++) {
 				try {
 
 					RemotingTransporter responseTransporter = this.nettyRemotingClient.invokeSync(registryAddresses[index], requestTransporter, 3000l);
-					RegistryMetricsCustomBody registryMetricsCustomBody = serializerImpl().readObject(responseTransporter.bytes(),
-							RegistryMetricsCustomBody.class);
+					MetricsCustomBody registryMetricsCustomBody = serializerImpl().readObject(responseTransporter.bytes(),
+							MetricsCustomBody.class);
 
 					List<ServiceMetrics> serviceMetricses = registryMetricsCustomBody.getServiceMetricses();
 
@@ -116,32 +175,39 @@ public class KaleidoscopeInfo {
 							: serviceMetricses.size());
 
 					if (null != serviceMetricses && serviceMetricses.size() > 0) {
+						
+						synchronized (globalServiceMetrics) {
+							for (ServiceMetrics serviceMetrics : serviceMetricses) {
 
-						for (ServiceMetrics serviceMetrics : serviceMetricses) {
+								logger.info("ServiceMetrics [{}]", serviceMetrics);
 
-							logger.info("ServiceMetrics [{}]", serviceMetrics);
-
-							ServiceMetrics currentServiceMetrics = globalServiceMetrics.get(serviceMetrics.getServiceName());
-							if (currentServiceMetrics == null) {
-								currentServiceMetrics = new ServiceMetrics();
+								ServiceMetrics currentServiceMetrics = globalServiceMetrics.get(serviceMetrics.getServiceName());
+								
+								if (currentServiceMetrics == null) {
+									currentServiceMetrics = new ServiceMetrics();
+									globalServiceMetrics.put(serviceMetrics.getServiceName(), currentServiceMetrics);
+								}
+								// 更新负载均衡策略
+								currentServiceMetrics.setLoadBalanceStrategy(serviceMetrics.getLoadBalanceStrategy());
+								currentServiceMetrics.setServiceName(serviceMetrics.getServiceName());
+								Set<ConsumerInfo> consumerInfos = currentServiceMetrics.getConsumerInfos();
+								ConcurrentMap<Address, ProviderInfo> providerInfos = currentServiceMetrics.getProviderMaps();
+								// 如果是某个更新批次的第一批次，则将过去更新的信息清除掉
+								if (index == 0) {
+									consumerInfos.clear();
+									providerInfos.clear();
+								}
+								consumerInfos.addAll(serviceMetrics.getConsumerInfos());
+								//合并2个map
+								ConcurrentMap<Address, ProviderInfo> concurrentMap = serviceMetrics.getProviderMaps();
+								if(null != concurrentMap && !concurrentMap.keySet().isEmpty()){
+									for(Address address : concurrentMap.keySet()){
+										providerInfos.put(address, concurrentMap.get(address));
+									}
+								}
 							}
-							// 更新负载均衡策略
-							currentServiceMetrics.setLoadBalanceStrategy(serviceMetrics.getLoadBalanceStrategy());
-							currentServiceMetrics.setServiceName(serviceMetrics.getServiceName());
-							Set<ConsumerInfo> consumerInfos = currentServiceMetrics.getConsumerInfos();
-							Set<ProviderInfo> providerInfos = currentServiceMetrics.getProviderInfos();
-							// 如果是某个更新批次的第一批次，则将过去更新的信息清除掉
-							if (index == 0) {
-								consumerInfos.clear();
-								providerInfos.clear();
-							}
-							consumerInfos.addAll(serviceMetrics.getConsumerInfos());
-							providerInfos.addAll(serviceMetrics.getProviderInfos());
-
-							globalServiceMetrics.put(serviceMetrics.getServiceName(), currentServiceMetrics);
 						}
 					}
-
 				} catch (InterruptedException | RemotingException e) {
 					logger.error("connection to registry address[{}] failed", registryAddresses[index]);
 				}

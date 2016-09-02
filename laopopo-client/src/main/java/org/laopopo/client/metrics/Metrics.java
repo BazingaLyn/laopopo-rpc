@@ -66,40 +66,49 @@ public class Metrics {
 			//循环每一个统计的serviceName的信息
 			for(String serviceName :map.keySet()){
 				
-				MetricsReporter metricsReporter = globalMetricsReporter.get(serviceName);
+				String currentServiceName = serviceName.split("::")[0];
+				MetricsReporter metricsReporter = globalMetricsReporter.get(currentServiceName);
+				
 				if(null == metricsReporter){
 					metricsReporter = new MetricsReporter();
-					metricsReporter.setServiceName(serviceName);
+					metricsReporter.setServiceName(currentServiceName);
+					globalMetricsReporter.put(currentServiceName, metricsReporter);
 				}
-				Meter meter = map.get(serviceName+"::rejection");
+				Meter meter = map.get(serviceName);
 				metricsReporter.setFailCount(meter.getCount()); //设置失败次数
 			}
 		}
 		
 		if(null != histograms && histograms.keySet() != null && histograms.keySet().size() > 0){
 			//循环每一个统计的serviceName的信息
-			for(String serviceName :map.keySet()){
+			for(String serviceName :histograms.keySet()){
 				
-				MetricsReporter metricsReporter = globalMetricsReporter.get(serviceName);
+				String currentServiceName = serviceName.split("::")[0];
+				MetricsReporter metricsReporter = globalMetricsReporter.get(currentServiceName);
 				if(null == metricsReporter){
 					metricsReporter = new MetricsReporter();
-					metricsReporter.setServiceName(serviceName);
+					
+					metricsReporter.setServiceName(currentServiceName);
+					globalMetricsReporter.put(currentServiceName, metricsReporter);
 				}
-				Histogram Histogram = histograms.get(serviceName+"::requestSize");
+				Histogram Histogram = histograms.get(serviceName);
 				metricsReporter.setHandlerDataAvgSize(Histogram.getSnapshot().getMean()); //设置请求体的平均大小
 			}
 		}
 		
 		if(null != timer && timer.keySet() != null && timer.keySet().size() > 0){
 			//循环每一个统计的serviceName的信息
-			for(String serviceName :map.keySet()){
+			for(String serviceName :timer.keySet()){
 				
-				MetricsReporter metricsReporter = globalMetricsReporter.get(serviceName);
+				String currentServiceName = serviceName.split("::")[0];
+				MetricsReporter metricsReporter = globalMetricsReporter.get(currentServiceName);
 				if(null == metricsReporter){
 					metricsReporter = new MetricsReporter();
-					metricsReporter.setServiceName(serviceName);
+					
+					metricsReporter.setServiceName(currentServiceName);
+					globalMetricsReporter.put(currentServiceName, metricsReporter);
 				}
-				Timer currentTime = timer.get(serviceName+"::processing");
+				Timer currentTime = timer.get(serviceName);
 				metricsReporter.setCallCount(currentTime.getCount()); //设置请求的次数
 				metricsReporter.setHandlerAvgTime(currentTime.getSnapshot().getMean());
 			}

@@ -1,12 +1,17 @@
 package org.laopopo.monitor;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 
+import org.laopopo.common.rpc.MetricsReporter;
+import org.laopopo.common.rpc.RegisterMeta.Address;
 import org.laopopo.common.utils.NamedThreadFactory;
 import org.laopopo.remoting.netty.NettyRemotingServer;
 import org.laopopo.remoting.netty.NettyServerConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 
@@ -17,6 +22,8 @@ import org.laopopo.remoting.netty.NettyServerConfig;
  */
 public class DefaultMonitor implements MonitorNode {
 	
+	private static final Logger logger = LoggerFactory.getLogger(DefaultMonitor.class);
+	
 	private NettyServerConfig nettyServerConfig;
 	
 	private NettyRemotingServer nettyRemotingServer;
@@ -25,14 +32,14 @@ public class DefaultMonitor implements MonitorNode {
 	
 	private ExecutorService remotingChannelInactiveExecutor;
 	
-	private MonitorController monitorController;
+	private ConcurrentMap<String, ConcurrentMap<Address, MetricsReporter>> globalMetricsReporter = new ConcurrentHashMap<String, ConcurrentMap<Address,MetricsReporter>>();
 	
-	//定时任务
-    private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("monitor-timer"));
+	private ConcurrentMap<String, ConcurrentMap<Address, MetricsReporter>> historyGlobalMetricsReporter = new ConcurrentHashMap<String, ConcurrentMap<Address,MetricsReporter>>();
+//	//定时任务
+//    private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("monitor-timer"));
 	
 	public DefaultMonitor(NettyServerConfig nettyServerConfig) {
 		this.nettyServerConfig = nettyServerConfig;
-		monitorController = new MonitorController(this);
 		initialize();
 	}
 
@@ -58,15 +65,23 @@ public class DefaultMonitor implements MonitorNode {
 	@Override
 	public void start() {
 		this.nettyRemotingServer.start();
+		logger.info("monitor start...");
 	}
 
-	public MonitorController getMonitorController() {
-		return monitorController;
+	public ConcurrentMap<String, ConcurrentMap<Address, MetricsReporter>> getGlobalMetricsReporter() {
+		return globalMetricsReporter;
 	}
 
-	public void setMonitorController(MonitorController monitorController) {
-		this.monitorController = monitorController;
+	public void setGlobalMetricsReporter(ConcurrentMap<String, ConcurrentMap<Address, MetricsReporter>> globalMetricsReporter) {
+		this.globalMetricsReporter = globalMetricsReporter;
 	}
-	
+
+	public ConcurrentMap<String, ConcurrentMap<Address, MetricsReporter>> getHistoryGlobalMetricsReporter() {
+		return historyGlobalMetricsReporter;
+	}
+
+	public void setHistoryGlobalMetricsReporter(ConcurrentMap<String, ConcurrentMap<Address, MetricsReporter>> historyGlobalMetricsReporter) {
+		this.historyGlobalMetricsReporter = historyGlobalMetricsReporter;
+	}
 
 }

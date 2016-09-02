@@ -9,6 +9,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import org.laopopo.client.metrics.Metrics;
 import org.laopopo.client.provider.DefaultServiceProviderContainer.CurrentServiceState;
 import org.laopopo.client.provider.flow.control.FlowController;
 import org.laopopo.client.provider.model.DefaultProviderInactiveProcessor;
@@ -106,12 +107,13 @@ public class DefaultProvider implements Provider {
 				}
 			}
 		}, 60, 60, TimeUnit.SECONDS);
+		
 		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
 			@Override
 			public void run() {
 				try {
-					logger.info("ready send message which send registry failed");
+					logger.info("ready send message");
 					DefaultProvider.this.providerController.getRegistryController().checkPublishFailMessage();
 				} catch (InterruptedException | RemotingException e) {
 					logger.warn("schedule republish failed [{}]", e.getMessage());
@@ -119,10 +121,17 @@ public class DefaultProvider implements Provider {
 			}
 		}, 1, 1, TimeUnit.MINUTES);
 		
+		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
+
+			@Override
+			public void run() {
+				logger.info("ready prepare send Report");
+				Metrics.scheduledSendReport();
+			}
+		}, 20, 60, TimeUnit.SECONDS);
+		
 		//如果监控中心的地址不是null，则需要定时发送统计信息
-		if(monitorAddress != null){
-			
-			this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
+		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
 				@Override
 				public void run() {
@@ -141,7 +150,6 @@ public class DefaultProvider implements Provider {
 					}
 				}
 			}, 30, 60, TimeUnit.SECONDS);
-		}
 	}
 
 	private void registerProcessor() {

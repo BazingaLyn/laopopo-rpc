@@ -27,7 +27,7 @@ import org.laopopo.common.rpc.ServiceReviewState;
 import org.laopopo.common.transport.body.AckCustomBody;
 import org.laopopo.common.transport.body.ManagerServiceCustomBody;
 import org.laopopo.common.transport.body.PublishServiceCustomBody;
-import org.laopopo.common.transport.body.RegistryMetricsCustomBody;
+import org.laopopo.common.transport.body.MetricsCustomBody;
 import org.laopopo.common.transport.body.SubcribeResultCustomBody;
 import org.laopopo.common.transport.body.SubscribeRequestCustomBody;
 import org.laopopo.remoting.ConnectionUtils;
@@ -155,7 +155,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 
 	public RemotingTransporter handleMetricsService(String metricsServiceName, long requestId) {
 
-		RegistryMetricsCustomBody responseBody = new RegistryMetricsCustomBody();
+		MetricsCustomBody responseBody = new MetricsCustomBody();
 		RemotingTransporter remotingTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.MANAGER_SERVICE, responseBody, requestId);
 		List<ServiceMetrics> serviceMetricses = new ArrayList<ServiceMetrics>();
 		// 统计全部
@@ -469,7 +469,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		serviceMetrics.setLoadBalanceStrategy(globalServiceLoadBalance.get(serviceName));
 		ConcurrentMap<Address, RegisterMeta> concurrentMap = globalRegisterInfoMap.get(serviceName);
 		if (null != concurrentMap && concurrentMap.keySet() != null) {
-			Set<ProviderInfo> providerInfos = new HashSet<ServiceMetrics.ProviderInfo>();
+			ConcurrentMap<Address,ProviderInfo> providerInfos = new ConcurrentHashMap<Address,ProviderInfo>();
 			for (Address address : concurrentMap.keySet()) {
 
 				ProviderInfo providerInfo = new ProviderInfo();
@@ -481,9 +481,9 @@ public class RegistryProviderManager implements RegistryProviderServer {
 				providerInfo.setIsVipService(meta.isVIPService());
 				providerInfo.setIsSupportDegrade(meta.isSupportDegradeService());
 
-				providerInfos.add(providerInfo);
+				providerInfos.put(address, providerInfo);
 			}
-			serviceMetrics.setProviderInfos(providerInfos);
+			serviceMetrics.setProviderMaps(providerInfos);
 		}
 		ConcurrentSet<Channel> channels = globalConsumerMetaMap.get(serviceName);
 		if (null != channels && channels.size() > 0) {

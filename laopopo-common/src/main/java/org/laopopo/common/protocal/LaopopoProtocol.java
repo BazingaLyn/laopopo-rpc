@@ -44,6 +44,8 @@ public class LaopopoProtocol {
   	
   	public static final byte CHANGE_LOADBALANCE = 75;
   	
+  	public static final byte MERTRICS_SERVICE = 76;
+  	
     //心跳
     public static final byte HEARTBEAT = 127;
     

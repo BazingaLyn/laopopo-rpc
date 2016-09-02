@@ -2,8 +2,11 @@ package org.laopopo.common.metrics;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.laopopo.common.loadbalance.LoadBalanceStrategy;
+import org.laopopo.common.rpc.RegisterMeta.Address;
 import org.laopopo.common.rpc.ServiceReviewState;
 
 /**
@@ -15,13 +18,15 @@ import org.laopopo.common.rpc.ServiceReviewState;
  */
 public class ServiceMetrics {
 	
-	private String serviceName;                      							  //服务名
-	private Long totalCallCount;                     							  //该服务的总共的统计次数
-	private Long totalFailCount;                    							  //该服务的总共的失败次数
-	private Double totalHandlerRequestBodySize;    								  //该服务的请求的总大小
-	private Set<ConsumerInfo> consumerInfos = new HashSet<ConsumerInfo>();        //该服务的消费者的信息
-	private Set<ProviderInfo> providerInfos = new HashSet<ProviderInfo>();        //该服务的提供者的信息
-	private LoadBalanceStrategy loadBalanceStrategy; 							  //负载均衡策略
+	private String serviceName;                      							  	  //服务名
+	private Long totalCallCount = 0l;                     							  //该服务的总共的统计次数
+	private Long totalFailCount = 0l;                    							  //该服务的总共的失败次数
+	private Double handlerAvgTime = 0d;
+	private Double totalHandlerRequestBodySize = 0d;    							  //该服务的请求的总大小
+	private ConcurrentMap<Address,ProviderInfo> providerMaps = 
+			new ConcurrentHashMap<Address, ProviderInfo>();     	                  //该服务的消费者的信息
+	private Set<ConsumerInfo> consumerInfos = new HashSet<ConsumerInfo>();        	  //该服务的提供者的信息
+	private LoadBalanceStrategy loadBalanceStrategy; 							  	  //负载均衡策略
 	
 	public String getServiceName() {
 		return serviceName;
@@ -54,6 +59,15 @@ public class ServiceMetrics {
 	public void setTotalHandlerRequestBodySize(Double totalHandlerRequestBodySize) {
 		this.totalHandlerRequestBodySize = totalHandlerRequestBodySize;
 	}
+	
+
+	public ConcurrentMap<Address, ProviderInfo> getProviderMaps() {
+		return providerMaps;
+	}
+
+	public void setProviderMaps(ConcurrentMap<Address, ProviderInfo> providerMaps) {
+		this.providerMaps = providerMaps;
+	}
 
 	public Set<ConsumerInfo> getConsumerInfos() {
 		return consumerInfos;
@@ -61,14 +75,6 @@ public class ServiceMetrics {
 
 	public void setConsumerInfos(Set<ConsumerInfo> consumerInfos) {
 		this.consumerInfos = consumerInfos;
-	}
-
-	public Set<ProviderInfo> getProviderInfos() {
-		return providerInfos;
-	}
-
-	public void setProviderInfos(Set<ProviderInfo> providerInfos) {
-		this.providerInfos = providerInfos;
 	}
 
 	public LoadBalanceStrategy getLoadBalanceStrategy() {
@@ -79,6 +85,13 @@ public class ServiceMetrics {
 		this.loadBalanceStrategy = loadBalanceStrategy;
 	}
 	
+	public Double getHandlerAvgTime() {
+		return handlerAvgTime;
+	}
+
+	public void setHandlerAvgTime(Double handlerAvgTime) {
+		this.handlerAvgTime = handlerAvgTime;
+	}
 
 	public static class ConsumerInfo {
 		
@@ -113,15 +126,15 @@ public class ServiceMetrics {
 	//提供者的信息
 	public static class ProviderInfo {
 		
-		private int port;                  //端口号
-		private String host; 			   //host
-		private Long callCount;            //调用的次数
-		private Long failCount;            //失败的次数
-		private Double handlerAvgTime;     //处理的平均时间
-		private Double handlerDataAvgSize; //处理请求数据包的平均大小
-		private Boolean isDegradeService;  //是否已经降级
-		private Boolean isSupportDegrade;  //是否支持降级
-		private Boolean isVipService;      //是否是VIP服务
+		private int port;                       //端口号
+		private String host; 			        //host
+		private Long callCount = 0l;            //调用的次数
+		private Long failCount = 0l;            //失败的次数
+		private Double handlerAvgTime = 0d;     //处理的平均时间
+		private Double handlerDataAvgSize = 0d; //处理请求数据包的平均大小
+		private Boolean isDegradeService;       //是否已经降级
+		private Boolean isSupportDegrade;       //是否支持降级
+		private Boolean isVipService;           //是否是VIP服务
 		private ServiceReviewState serviceReviewState;   //服务的审核状态
 		
 		public int getPort() {
@@ -194,9 +207,9 @@ public class ServiceMetrics {
 
 	@Override
 	public String toString() {
-		return "ServiceMetrics [serviceName=" + serviceName + ", totalCallCount=" + totalCallCount + ", totalFailCount=" + totalFailCount
-				+ ", totalHandlerRequestBodySize=" + totalHandlerRequestBodySize + ", consumerInfos=" + consumerInfos + ", providerInfos=" + providerInfos
-				+ ", loadBalanceStrategy=" + loadBalanceStrategy + "]";
+		return "ServiceMetrics [serviceName=" + serviceName + ", totalCallCount=" + totalCallCount + ", totalFailCount=" + totalFailCount + ", handlerAvgTime="
+				+ handlerAvgTime + ", totalHandlerRequestBodySize=" + totalHandlerRequestBodySize + ", providerMaps=" + providerMaps + ", consumerInfos="
+				+ consumerInfos + ", loadBalanceStrategy=" + loadBalanceStrategy + "]";
 	}
 
 }
