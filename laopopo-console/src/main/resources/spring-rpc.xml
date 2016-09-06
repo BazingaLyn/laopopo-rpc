@@ -13,7 +13,8 @@
        
        <bean id="kaleidoscopeInfo" class="org.laopopo.console.info.kaleidoscope.KaleidoscopeInfo">
          <constructor-arg name="registryAddress" value="127.0.0.1:18010"/>
-         <constructor-arg name="monitorAddress"><null /></constructor-arg>
+<!--          <constructor-arg name="monitorAddress"><null /></constructor-arg> -->
+		 <constructor-arg name="monitorAddress" value="127.0.0.1:19010"/>
        </bean>
        
     

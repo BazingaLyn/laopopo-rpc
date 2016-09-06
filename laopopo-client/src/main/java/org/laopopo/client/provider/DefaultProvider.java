@@ -4,6 +4,8 @@ import static org.laopopo.common.serialization.SerializerHolder.serializerImpl;
 import io.netty.channel.Channel;
 
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -55,6 +57,8 @@ public class DefaultProvider implements Provider {
 
 	/********* 要发布的服务的信息 ***********/
 	private List<RemotingTransporter> publishRemotingTransporters;
+	/************全局发布的信息************/
+	private ConcurrentMap<String, PublishServiceCustomBody> globalPublishService = new ConcurrentHashMap<String, PublishServiceCustomBody>();
 	/***** 注册中心的地址 ******/
 	private String registryAddress;
 	/******* 服务暴露给consumer的地址 ********/
@@ -128,7 +132,7 @@ public class DefaultProvider implements Provider {
 				logger.info("ready prepare send Report");
 				Metrics.scheduledSendReport();
 			}
-		}, 20, 60, TimeUnit.SECONDS);
+		}, 4, 60, TimeUnit.SECONDS);
 		
 		//如果监控中心的地址不是null，则需要定时发送统计信息
 		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
@@ -137,7 +141,7 @@ public class DefaultProvider implements Provider {
 				public void run() {
 					DefaultProvider.this.providerController.getProviderMonitorController().sendMetricsInfo();
 				}
-			}, 1, 1, TimeUnit.MINUTES);
+			}, 10, 60, TimeUnit.SECONDS);
 			
 			this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
@@ -225,6 +229,9 @@ public class DefaultProvider implements Provider {
 
 		logger.info("registry center address [{}] serviceAddress [{}] service [{}]", this.registryAddress, this.serviceListenAddress,
 				this.publishRemotingTransporters);
+		
+		//记录发布的信息的记录，方便其他地方做使用
+		initGlobalService();
 
 		nettyRemotingClient.start();
 		// 发布任务
@@ -245,6 +252,18 @@ public class DefaultProvider implements Provider {
 			initMonitorChannel();
 		}
 
+	}
+
+	private void initGlobalService() {
+		List<RemotingTransporter> list = this.publishRemotingTransporters; //Stack copy
+		
+		if(null != list &&!list.isEmpty()){
+			for(RemotingTransporter remotingTransporter : list){
+				PublishServiceCustomBody customBody = (PublishServiceCustomBody)remotingTransporter.getCustomHeader();
+				String serviceName = customBody.getServiceProviderName();
+				this.globalPublishService.put(serviceName, customBody);
+			}
+		}
 	}
 
 	public void initMonitorChannel() throws InterruptedException {
@@ -347,6 +366,14 @@ public class DefaultProvider implements Provider {
 
 	public void setMonitorAddress(String monitorAddress) {
 		this.monitorAddress = monitorAddress;
+	}
+
+	public ConcurrentMap<String, PublishServiceCustomBody> getGlobalPublishService() {
+		return globalPublishService;
+	}
+
+	public void setGlobalPublishService(ConcurrentMap<String, PublishServiceCustomBody> globalPublishService) {
+		this.globalPublishService = globalPublishService;
 	}
 	
 

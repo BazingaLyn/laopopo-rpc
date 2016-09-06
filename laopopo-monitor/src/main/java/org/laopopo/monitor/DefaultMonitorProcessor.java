@@ -136,9 +136,10 @@ public class DefaultMonitorProcessor implements NettyRequestProcessor {
 		
 		if(body.getMetricsReporter() != null && !body.getMetricsReporter().isEmpty()){
 			
-			Address address = ConnectionUtils.parseChannelRemoteAddress(channel);
 			
 			for(MetricsReporter metricsReporter : body.getMetricsReporter()){
+				
+				Address address = new Address(metricsReporter.getHost(), metricsReporter.getPort());
 				
 				String serviceName = metricsReporter.getServiceName();
 				ConcurrentMap<Address, MetricsReporter> maps = defaultMonitor.getGlobalMetricsReporter().get(serviceName);

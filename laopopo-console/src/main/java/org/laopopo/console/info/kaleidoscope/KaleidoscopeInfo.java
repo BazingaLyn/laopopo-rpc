@@ -21,6 +21,8 @@ import org.laopopo.common.metrics.ServiceMetrics.ProviderInfo;
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.rpc.ManagerServiceRequestType;
 import org.laopopo.common.rpc.RegisterMeta.Address;
+import org.laopopo.common.rpc.ServiceReviewState;
+import org.laopopo.common.transport.body.AckCustomBody;
 import org.laopopo.common.transport.body.ManagerServiceCustomBody;
 import org.laopopo.common.transport.body.MetricsCustomBody;
 import org.laopopo.common.utils.NamedThreadFactory;
@@ -74,7 +76,7 @@ public class KaleidoscopeInfo {
 					logger.warn("schedule get registryInfos from registryServer failed [{}]", e.getMessage());
 				}
 			}
-		}, 60, 60, TimeUnit.SECONDS);
+		}, 6, 60, TimeUnit.SECONDS);
 
 		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
@@ -87,7 +89,7 @@ public class KaleidoscopeInfo {
 					logger.warn("schedule get monitorInfos from monitorServer failed [{}]", e.getMessage());
 				}
 			}
-		}, 60, 60, TimeUnit.SECONDS);
+		}, 6, 60, TimeUnit.SECONDS);
 	}
 
 	protected void refreshMonitorServerInfo() throws InterruptedException {
@@ -247,6 +249,40 @@ public class KaleidoscopeInfo {
 		resultMap.put("total", total);
 		resultMap.put("rows", serviceMetrics != null ? serviceMetrics.subList(offset, Math.min((offset + pageSize), total)) : new ArrayList<ServiceMetrics>());
 		return resultMap;
+	}
+
+	public Boolean notifyServiceForbidden(String host, int port, String serviceName) {
+		
+		ManagerServiceCustomBody managerServiceCustomBody = new ManagerServiceCustomBody();
+		// 设置属性为==>统计
+		managerServiceCustomBody.setManagerServiceRequestType(ManagerServiceRequestType.REVIEW);
+		managerServiceCustomBody.setAddress(new Address(host, port));
+		managerServiceCustomBody.setSerivceName(serviceName);
+		managerServiceCustomBody.setServiceReviewState(ServiceReviewState.FORBIDDEN);
+		RemotingTransporter requestTransporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.MANAGER_SERVICE, managerServiceCustomBody);
+		
+		boolean successFlag = true;
+		
+		if(this.registryAddress != null){
+			
+        String[] registryAddresses = this.registryAddress.split(",");
+        
+			for (int index = 0; index < registryAddresses.length; index++) {
+				
+				try {
+					RemotingTransporter responseTransporter = this.nettyRemotingClient.invokeSync(registryAddresses[index], requestTransporter, 3000l);
+					AckCustomBody ackCustomBody = serializerImpl().readObject(responseTransporter.bytes(), AckCustomBody.class);
+					successFlag = successFlag && ackCustomBody.isSuccess();
+				} catch (InterruptedException | RemotingException e) {
+					logger.error("send notify fail serviceName[{}] and exception [{}]",serviceName,e.getMessage());
+					successFlag = false;
+				}
+				
+			}
+		}else{
+			successFlag = false;
+		}
+		return successFlag;
 	}
 
 }

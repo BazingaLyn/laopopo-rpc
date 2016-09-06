@@ -509,8 +509,11 @@ public class RegistryProviderManager implements RegistryProviderServer {
 	 * @param request
 	 * @param channel
 	 * @return
+	 * @throws InterruptedException 
+	 * @throws RemotingTimeoutException 
+	 * @throws RemotingSendRequestException 
 	 */
-	private RemotingTransporter handleReview(String serviceName, Address address, long requestId, ServiceReviewState reviewState) {
+	private RemotingTransporter handleReview(String serviceName, Address address, long requestId, ServiceReviewState reviewState) throws RemotingSendRequestException, RemotingTimeoutException, InterruptedException {
 
 		AckCustomBody ackCustomBody = new AckCustomBody(requestId, false);
 		RemotingTransporter remotingTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, requestId);
@@ -530,18 +533,43 @@ public class RegistryProviderManager implements RegistryProviderServer {
 
 				if (data != null) {
 					ackCustomBody.setSuccess(true);
+					ServiceReviewState serviceReviewState = data.getIsReviewed();
 					data.setIsReviewed(reviewState);
+					
+					notifyConsumer(serviceReviewState,reviewState,data,serviceName);
+					
+					
 				}
 			} else { // 如果传递的地址是null，说明是审核该服务的所有地址
 				if (null != maps.values() && maps.values().size() > 0) {
 					ackCustomBody.setSuccess(true);
 					for (RegisterMeta meta : maps.values()) {
+						ServiceReviewState serviceReviewState = meta.getIsReviewed();
 						meta.setIsReviewed(reviewState);
+						notifyConsumer(serviceReviewState,reviewState,meta,serviceName);
 					}
 				}
 			}
 		}
 		return remotingTransporter;
+	}
+
+	private void notifyConsumer(ServiceReviewState serviceReviewState, ServiceReviewState reviewState, RegisterMeta data, String serviceName) throws RemotingSendRequestException, RemotingTimeoutException, InterruptedException {
+		//当现状态和原状态不一样的情况下，需要通知消费者
+		if(serviceReviewState != reviewState){
+			
+			switch (reviewState) {
+			case PASS_REVIEW: //如果审核通过
+				this.defaultRegistryServer.getConsumerManager().notifyMacthedSubscriber(data, globalServiceLoadBalance.get(serviceName));
+				break;
+			case FORBIDDEN:   //如果修改成禁用
+				this.defaultRegistryServer.getConsumerManager().notifyMacthedSubscriberCancel(data);
+				break;
+			default:
+				break;
+			}
+		}
+		
 	}
 
 	private RemotingTransporter handleDegradeService(RemotingTransporter request, Channel channel) throws RemotingSendRequestException,

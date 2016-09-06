@@ -10,6 +10,7 @@ import org.laopopo.client.metrics.Metrics;
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.rpc.MetricsReporter;
 import org.laopopo.common.transport.body.ProviderMetricsCustomBody;
+import org.laopopo.common.transport.body.PublishServiceCustomBody;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,16 +40,35 @@ public class ProviderMonitorController {
 		logger.info("scheduled sendMetricsInfos");
 
 		if (defaultProvider.getMonitorAddress() == null) {
-			logger.info("monitor address is empty");
+			logger.warn("monitor address is empty");
 			return;
 		}
+		
+		if(defaultProvider.getGlobalPublishService() == null){
+			logger.warn("publish info is empty");
+			return;
+		}
+		
+		
 
 		ConcurrentMap<String, MetricsReporter> metricsMap = Metrics.getGlobalMetricsReporter();
 		if (metricsMap != null && metricsMap.keySet() != null && metricsMap.values() != null) {
 
 			List<MetricsReporter> reporters = new ArrayList<MetricsReporter>();
-
+			
 			reporters.addAll(metricsMap.values());
+			
+			for(int i = 0;i<reporters.size();i++){
+				String serviceName = reporters.get(i).getServiceName();
+				PublishServiceCustomBody body = defaultProvider.getGlobalPublishService().get(serviceName);
+				
+				if(body == null){
+					logger.warn("servicename [{}] has no publishInfo ",serviceName);
+					continue;
+				}
+				reporters.get(i).setHost(body.getHost());
+				reporters.get(i).setPort(body.isVIPService() ? (body.getPort() -2):body.getPort());
+			}
 			ProviderMetricsCustomBody body = new ProviderMetricsCustomBody();
 			body.setMetricsReporter(reporters);
 			RemotingTransporter remotingTransporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.MERTRICS_SERVICE, body);

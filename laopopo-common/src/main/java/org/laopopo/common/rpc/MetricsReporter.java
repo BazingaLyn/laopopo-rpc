@@ -17,6 +17,8 @@ public class MetricsReporter implements Serializable {
 	 */
 	private static final long serialVersionUID = -3846340000197732373L;
 	
+	private String host;               //host	
+	private int port; 				   //端口号
 	private String serviceName;        //统计的服务名
 	private Long callCount;            //调用的次数
 	private Long failCount;            //失败的次数
@@ -54,10 +56,22 @@ public class MetricsReporter implements Serializable {
 	public void setHandlerDataAvgSize(Double handlerDataAvgSize) {
 		this.handlerDataAvgSize = handlerDataAvgSize;
 	}
+	public String getHost() {
+		return host;
+	}
+	public void setHost(String host) {
+		this.host = host;
+	}
+	public int getPort() {
+		return port;
+	}
+	public void setPort(int port) {
+		this.port = port;
+	}
 	@Override
 	public String toString() {
-		return "MetricsReporter [serviceName=" + serviceName + ", callCount=" + callCount + ", failCount=" + failCount + ", handlerAvgTime=" + handlerAvgTime
-				+ ", handlerDataAvgSize=" + handlerDataAvgSize + "]";
+		return "MetricsReporter [host=" + host + ", port=" + port + ", serviceName=" + serviceName + ", callCount=" + callCount + ", failCount=" + failCount
+				+ ", handlerAvgTime=" + handlerAvgTime + ", handlerDataAvgSize=" + handlerDataAvgSize + "]";
 	}
 	
 }
