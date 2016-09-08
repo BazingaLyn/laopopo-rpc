@@ -57,7 +57,6 @@ public class ProviderRPCController {
 	public void handlerRPCRequest(RemotingTransporter request, Channel channel) {
 		
 		Meter rejectionMeter = null;  			// 请求被拒绝次数统计
-		Histogram requestSizeHistogram = null;  // 统计请求体的大小
 		Timer processingTimer = null;           // 统计请求的时间
 		
 		String serviceName = null;
@@ -73,10 +72,8 @@ public class ProviderRPCController {
 			serviceName = body.getServiceName();
 			
 			rejectionMeter = Metrics.meter(serviceName+"::rejection");
-			requestSizeHistogram = Metrics.histogram(serviceName+"::requestSize");
 			processingTimer = Metrics.timer(serviceName+"::processing");
 			
-			requestSizeHistogram.update(bytes.length);
 		} catch (Exception e) {
 			rejected(BAD_REQUEST, channel, request,rejectionMeter);
 			return;

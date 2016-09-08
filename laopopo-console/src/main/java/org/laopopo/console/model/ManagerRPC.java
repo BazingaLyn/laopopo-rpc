@@ -1,19 +1,21 @@
 package org.laopopo.console.model;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description 管理员在管理页面发出来的请求命令
+ * @time 2016年9月6日
+ * @modifytime
+ */
 public class ManagerRPC {
 	
-	// 1 禁用 2 降级 3解禁 4取消降级 5
-	private Integer managerType;
 	
-	private String host;
-	
-	private int port;
-	
-	private String serviceName;
-	
-	private Integer serviceState;
-	
-	private int weightVal;
+	private Integer managerType; // 1 禁用 2 降级 3解禁 4取消降级 5
+	private String host;		 //host
+	private int port;			 //port
+	private String serviceName;  //服务名
+	private Integer serviceState;//服务状态
+	private int weightVal;       //权重
 
 	public Integer getManagerType() {
 		return managerType;

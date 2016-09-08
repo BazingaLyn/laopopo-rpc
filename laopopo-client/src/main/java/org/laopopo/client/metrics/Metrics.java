@@ -1,29 +1,23 @@
 package org.laopopo.client.metrics;
 
-import java.io.File;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
 
 import org.laopopo.common.rpc.MetricsReporter;
 
-import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.Counter;
-import com.codahale.metrics.CsvReporter;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.ScheduledReporter;
-import com.codahale.metrics.Slf4jReporter;
 import com.codahale.metrics.Timer;
 
 /**
  * 
  * @author BazingaLyn
- * @description
+ * @description 测量统计类
  * @time
- * @modifytime
+ * @modifytime 2016年9月7日
  */
 public class Metrics {
 
@@ -31,35 +25,10 @@ public class Metrics {
 	
 	private static ConcurrentMap<String, MetricsReporter> globalMetricsReporter = new ConcurrentHashMap<String, MetricsReporter>();
 	
-	private static final ScheduledReporter scheduledReporter;
-	
-	private static final boolean isPaperReport = false;
-	static {
-		
-		if(isPaperReport){
-			
-			scheduledReporter = CsvReporter.forRegistry(metricsRegistry).build(new File("C://metrics"));
-			
-		}else{
-			 ScheduledReporter _reporter;
-	            try {
-	                _reporter = Slf4jReporter.forRegistry(metricsRegistry)
-	                                            .withLoggingLevel(Slf4jReporter.LoggingLevel.WARN)
-	                                            .build();
-	            } catch (NoClassDefFoundError e) {
-	                // No Slf4j
-	                _reporter = ConsoleReporter.forRegistry(metricsRegistry).build();
-	            }
-	            scheduledReporter = _reporter;
-		}
-		
-		scheduledReporter.start(1, TimeUnit.MINUTES);
-	}
 	
 	public static void scheduledSendReport(){
 		
 		SortedMap<String, Meter> map = metricsRegistry.getMeters();                //失败调用的统计
-		SortedMap<String, Histogram> histograms = metricsRegistry.getHistograms(); //统计请求体的大小
 		SortedMap<String, Timer> timer = metricsRegistry.getTimers();              //请求时间的统计||请求的统计
 		
 		if(null != map && map.keySet() != null && map.keySet().size() > 0){
@@ -79,22 +48,22 @@ public class Metrics {
 			}
 		}
 		
-		if(null != histograms && histograms.keySet() != null && histograms.keySet().size() > 0){
-			//循环每一个统计的serviceName的信息
-			for(String serviceName :histograms.keySet()){
-				
-				String currentServiceName = serviceName.split("::")[0];
-				MetricsReporter metricsReporter = globalMetricsReporter.get(currentServiceName);
-				if(null == metricsReporter){
-					metricsReporter = new MetricsReporter();
-					
-					metricsReporter.setServiceName(currentServiceName);
-					globalMetricsReporter.put(currentServiceName, metricsReporter);
-				}
-				Histogram Histogram = histograms.get(serviceName);
-				metricsReporter.setHandlerDataAvgSize(Histogram.getSnapshot().getMean()); //设置请求体的平均大小
-			}
-		}
+//		if(null != histograms && histograms.keySet() != null && histograms.keySet().size() > 0){
+//			//循环每一个统计的serviceName的信息
+//			for(String serviceName :histograms.keySet()){
+//				
+//				String currentServiceName = serviceName.split("::")[0];
+//				MetricsReporter metricsReporter = globalMetricsReporter.get(currentServiceName);
+//				if(null == metricsReporter){
+//					metricsReporter = new MetricsReporter();
+//					
+//					metricsReporter.setServiceName(currentServiceName);
+//					globalMetricsReporter.put(currentServiceName, metricsReporter);
+//				}
+//				Histogram Histogram = histograms.get(serviceName);
+//				metricsReporter.setHandlerDataAvgSize(Histogram.getSnapshot().getMean()); //设置请求体的平均大小
+//			}
+//		}
 		
 		if(null != timer && timer.keySet() != null && timer.keySet().size() > 0){
 			//循环每一个统计的serviceName的信息
@@ -113,6 +82,7 @@ public class Metrics {
 				metricsReporter.setHandlerAvgTime(currentTime.getSnapshot().getMean());
 			}
 		}
+		
 	}
 	
 	

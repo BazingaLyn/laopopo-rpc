@@ -7,17 +7,17 @@ $(function() {
 					{
 
 						url : "/laopopo-console/index.do",
-						sortName : "rkey",// 排序列
-						striped : true,// 條紋行
-						sidePagination : "server",// 服务器分页
-						clickToSelect : true,// 选择行即选择checkbox
-						singleSelect : true,// 仅允许单选
-						pagination : true,// 启用分页
-						escape : true,// 过滤危险字符
-						queryParams : getParams,// 携带参数
-						pageCount : 10,// 每页行数
-						pageIndex : 0,// 其实页
-						method : "get",// 请求格式
+						sortName : "rkey",
+						striped : true,
+						sidePagination : "server",
+						clickToSelect : true,
+						singleSelect : true,
+						pagination : true,
+						escape : true,
+						queryParams : getParams,
+						pageCount : 10,
+						pageIndex : 0,
+						method : "get",
 						detailView : true,
 						detailFormatter : detailFormatter,
 						columns : [
@@ -84,7 +84,7 @@ $(function() {
 									width : '290px',
 									formatter : function(value, row, index) {
 										var btnStr = "&nbsp;&nbsp;&nbsp;&nbsp;<button onclick=suitBookingCitys() class='btn btn-success btn-xs'><i class='fa fa-edit'></i><span >刷新</span></button>";
-										btnStr += "&nbsp;&nbsp;&nbsp;&nbsp;<button onclick=editRegional()  class='btn btn-warning btn-xs'><i class='fa fa-eye'></i><span >负载策略</span></button>";
+										btnStr += "&nbsp;&nbsp;&nbsp;&nbsp;<button onclick=editRegional()  class='btn btn-warning btn-xs'><i class='fa fa-eye'></i><span>负载策略</span></button>";
 										return btnStr;
 									}
 								} ],
@@ -149,7 +149,7 @@ function detailFormatter(index, row) {
 						+'<td>'+value[obj].failCount+'</td>'
 						+'<td>'+callSuccessRatio+'</td>'
 						+'<td><button class="btn btn-success btn-xs" onclick=forbidden("'+value[obj].host+'",'+value[obj].port+',"'+row.serviceName+'")>禁用</button>'
-						+'&nbsp;&nbsp;<button class="btn btn-success btn-xs">降级</button>'
+						+'&nbsp;&nbsp;<button class="btn btn-success btn-xs" onclick=degradeService("'+value[obj].host+'",'+value[obj].port+',"'+row.serviceName+'")>降级</button>'
 						+'&nbsp;&nbsp;<button class="btn btn-success btn-xs">审核通过</button></td></tr>';
 			}
 		}
@@ -175,6 +175,26 @@ function detailFormatter(index, row) {
 	return html;
 }
 
+function degradeService(host,port,serviceName){
+	$.ajax({
+        url: "/laopopo-console/manager.do",
+        type: 'GET',
+        data: {
+        	"managerType" : 2,
+        	"host":host,
+        	"port":port,
+        	"serviceName":serviceName
+        },
+        async: false,
+        success: function(result) {
+        	 if(result.status){
+        		 $("#monitorTable").bootstrapTable('refresh');
+        	 }
+		}
+	});
+}
+
+/***禁用某个地址提供的某个服务****/
 function forbidden(host,port,serviceName){
 	$.ajax({
         url: "/laopopo-console/manager.do",
@@ -186,11 +206,12 @@ function forbidden(host,port,serviceName){
         	"serviceName":serviceName
         },
         async: false,
-        success: function( result ) {
-        	 
+        success: function(result) {
+        	 if(result.status){
+        		 $("#monitorTable").bootstrapTable('refresh');
+        	 }
 		}
 	});
-        
 }
 
 // 默认加载时携带参数

@@ -18,7 +18,7 @@ public static void main(String[] args) throws InterruptedException, RemotingExce
 		DefaultProvider defaultProvider = new DefaultProvider(new NettyClientConfig(), new NettyServerConfig());
 		
 		FlowController controller = new DefaultFlowController();
-		controller.setMaxTimes(1000);
+		controller.setMaxTimes(6000);
 		
 		defaultProvider.globalController(controller) //全局限流器
 					   .registryAddress("127.0.0.1:18010") //注册中心的地址

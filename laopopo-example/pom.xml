@@ -35,6 +35,10 @@
 			<artifactId>laopopo-monitor</artifactId>
 		</dependency>
 		<dependency>
+			  <groupId>com.alibaba</groupId>
+    		  <artifactId>fastjson</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
 			<version>1.0.13</version>

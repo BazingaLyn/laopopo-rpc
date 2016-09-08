@@ -5,6 +5,7 @@ import java.util.concurrent.ConcurrentMap;
 import org.laopopo.common.rpc.MetricsReporter;
 import org.laopopo.common.rpc.RegisterMeta.Address;
 import org.laopopo.monitor.DefaultMonitor;
+import org.laopopo.monitor.MonitorConfig;
 import org.laopopo.remoting.netty.NettyServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,10 +23,11 @@ public class MonitorTest {
 		t.start();
 
 		NettyServerConfig config = new NettyServerConfig();
+		MonitorConfig monitorConfig = new MonitorConfig();
 		// 注册中心的端口号
 		config.setListenPort(19010);
 
-		defaultMonitor = new DefaultMonitor(config);
+		defaultMonitor = new DefaultMonitor(config,monitorConfig);
 		defaultMonitor.start();
 
 	}

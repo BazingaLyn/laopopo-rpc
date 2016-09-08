@@ -601,8 +601,18 @@ public class RegistryProviderManager implements RegistryProviderServer {
 			}
 
 		}
-		Channel matchedProviderChannel = globalProviderChannelMetaMap.get(address);
-		return defaultRegistryServer.getRemotingServer().invokeSync(matchedProviderChannel, request, 3000l);
+		if(address == null){
+			return remotingTransporter;
+		}else{
+			Channel matchedProviderChannel = globalProviderChannelMetaMap.get(address);
+			if(matchedProviderChannel != null){
+				request.setCode(LaopopoProtocol.DEGRADE_SERVICE);
+				request.setCustomHeader(body);
+				return defaultRegistryServer.getRemotingServer().invokeSync(matchedProviderChannel, request, 3000l);
+			}else{
+				return remotingTransporter;
+			}
+		}
 	}
 
 }

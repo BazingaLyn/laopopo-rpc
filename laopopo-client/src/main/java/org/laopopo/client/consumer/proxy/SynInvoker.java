@@ -18,6 +18,13 @@ import org.laopopo.common.transport.body.ResponseCustomBody;
 import org.laopopo.common.utils.ChannelGroup;
 import org.laopopo.remoting.model.RemotingTransporter;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description 同步调用的类
+ * @time 2016年8月27日
+ * @modifytime
+ */
 public class SynInvoker {
 
 	private Consumer consumer;

@@ -9,7 +9,7 @@ import org.laopopo.common.rpc.MetricsReporter;
  * 
  * @author BazingaLyn
  * @description 管理员发送给监控中心的信息
- * @time
+ * @time 2016年9月1日
  * @modifytime
  */
 public class ProviderMetricsCustomBody implements CommonCustomBody {

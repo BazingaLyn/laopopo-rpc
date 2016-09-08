@@ -10,11 +10,17 @@ import org.laopopo.console.model.ManagerRPC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description 管理员管理页面spring mvc的controller
+ * @time 2016年9月6日
+ * @modifytime
+ */
 @Controller
 public class MonitorCoreController {
 
@@ -24,7 +30,7 @@ public class MonitorCoreController {
 	private KaleidoscopeInfo kaleidoscopeInfo;
 
 	@ResponseBody
-	@RequestMapping(value = "/index.do")
+	@RequestMapping(value = "/index.do") //首页初始化
 	public Map<String, Object> initTable(@RequestParam Map<String, Object> requestMap) {
 		int pageSize = 10;
 		int offset = 1;
@@ -45,7 +51,7 @@ public class MonitorCoreController {
 	}
 	
 	@ResponseBody
-	@RequestMapping(value = "/manager.do")
+	@RequestMapping(value = "/manager.do") //管理请求
 	public Map<String, Object> managerRpc(ManagerRPC managerRPC) {
 		Map<String, Object> resultMap = new HashMap<String, Object>();
 		
@@ -54,6 +60,10 @@ public class MonitorCoreController {
 		//禁用
 		if(managerRPC.getManagerType() == 1) {
 			operationFlag  = kaleidoscopeInfo.notifyServiceForbidden(managerRPC.getHost(),managerRPC.getPort(),managerRPC.getServiceName());
+		}
+		//降级
+		if(managerRPC.getManagerType() == 2) {
+			operationFlag  = kaleidoscopeInfo.notifyServiceDegrade(managerRPC.getHost(),managerRPC.getPort(),managerRPC.getServiceName());
 		}
 		
 		resultMap.put("status", operationFlag);

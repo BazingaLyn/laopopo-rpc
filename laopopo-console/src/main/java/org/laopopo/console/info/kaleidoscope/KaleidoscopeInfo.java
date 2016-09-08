@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
  * @modifytime 2016年9月1日
  */
 public class KaleidoscopeInfo {
+	
 
 	private static final Logger logger = LoggerFactory.getLogger(KaleidoscopeInfo.class);
 
@@ -58,6 +59,7 @@ public class KaleidoscopeInfo {
 	}
 
 	private void initialize() {
+		
 		NettyClientConfig clientConfig = new NettyClientConfig();
 		this.nettyRemotingClient = new NettyRemotingClient(clientConfig);
 
@@ -76,7 +78,7 @@ public class KaleidoscopeInfo {
 					logger.warn("schedule get registryInfos from registryServer failed [{}]", e.getMessage());
 				}
 			}
-		}, 6, 60, TimeUnit.SECONDS);
+		}, 3, 60, TimeUnit.SECONDS);
 
 		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
@@ -93,98 +95,117 @@ public class KaleidoscopeInfo {
 	}
 
 	protected void refreshMonitorServerInfo() throws InterruptedException {
+		
 		Set<String> serviceNames = globalServiceMetrics.keySet();
 		if(null != serviceNames && !serviceNames.isEmpty()){
 			for(String str:serviceNames){
 				getLastMonitorServerInfo(str);
+				//分批次发送
 				Thread.sleep(300l);
 			}
 		}
 	}
 
+	/**
+	 * 从监控中心端获取到最新的统计信息，更新信息
+	 * 这个方法的细节是将要统计的服务名发送给监控中心，监控中心返回这个服务的统计信息
+	 * 将得到的信息更新到本地的map中
+	 * @param serviceName
+	 */
 	protected void getLastMonitorServerInfo(String serviceName) {
 
-		ManagerServiceCustomBody managerServiceCustomBody = new ManagerServiceCustomBody();
-		// 设置属性为==>统计
-		managerServiceCustomBody.setManagerServiceRequestType(ManagerServiceRequestType.METRICS);
-		managerServiceCustomBody.setSerivceName(serviceName);
-		RemotingTransporter requestTransporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.MANAGER_SERVICE, managerServiceCustomBody);
-		
-		if(this.monitorAddress != null){
+		// 当监控端口的URL不是空的时候发送统计信息
+		if (this.monitorAddress != null && serviceName != null) {
 			
-			RemotingTransporter responseTransporter;
+			ManagerServiceCustomBody managerServiceCustomBody = new ManagerServiceCustomBody();
+			// 设置属性为==>统计
+			managerServiceCustomBody.setManagerServiceRequestType(ManagerServiceRequestType.METRICS);
+			//统计的服务名
+			managerServiceCustomBody.setSerivceName(serviceName);
+			RemotingTransporter requestTransporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.MANAGER_SERVICE, managerServiceCustomBody);
+
+			//监控中心返回的结果
+			RemotingTransporter responseTransporter = null;
 			try {
+				
 				responseTransporter = this.nettyRemotingClient.invokeSync(monitorAddress, requestTransporter, 3000l);
-				MetricsCustomBody registryMetricsCustomBody = serializerImpl().readObject(responseTransporter.bytes(),
-						MetricsCustomBody.class);
+				
+				MetricsCustomBody registryMetricsCustomBody = serializerImpl().readObject(responseTransporter.bytes(), MetricsCustomBody.class);
 
 				List<ServiceMetrics> serviceMetricses = registryMetricsCustomBody.getServiceMetricses();
-				if(serviceMetricses != null){
+				if (serviceMetricses != null && !serviceMetricses.isEmpty()) {
+					//因为只发送了一个服务名，所以只返回一个统计结果
 					ServiceMetrics metrics = serviceMetricses.get(0);
-					
-					synchronized (globalServiceMetrics) {
+
+					synchronized (globalServiceMetrics) { //lock
+						
+						//获取到本地的统计信息
 						ServiceMetrics serviceMetrics = globalServiceMetrics.get(serviceName);
-						serviceMetrics.setHandlerAvgTime(metrics.getHandlerAvgTime());
-						serviceMetrics.setTotalCallCount(metrics.getTotalCallCount());
-						serviceMetrics.setTotalFailCount(metrics.getTotalFailCount());
-						serviceMetrics.setTotalHandlerRequestBodySize(metrics.getTotalHandlerRequestBodySize());
-						ConcurrentMap<Address, ProviderInfo> existMap = serviceMetrics.getProviderMaps();
+						//更新统计信息
+						serviceMetrics.setHandlerAvgTime(metrics.getHandlerAvgTime()); //平均请求时间
+						serviceMetrics.setTotalCallCount(metrics.getTotalCallCount()); //成功请求的次数
+						serviceMetrics.setTotalFailCount(metrics.getTotalFailCount()); //失败请求的次数
+						//更新每个提供者的信息
+						ConcurrentMap<Address, ProviderInfo> existMap = serviceMetrics.getProviderMaps(); //本地的提供者的信息
 						ConcurrentMap<Address, ProviderInfo> remotingMap = metrics.getProviderMaps();
-						for(Address address : existMap.keySet()){
-							
-							 if(remotingMap.containsKey(address)){
-								 ProviderInfo existInfo = existMap.get(address);
-								 if(null != existInfo && remotingMap.get(address) != null){
-									 ProviderInfo remotingInfo = remotingMap.get(address);
-									 existInfo.setCallCount(remotingInfo.getCallCount());
-									 existInfo.setFailCount(remotingInfo.getFailCount());
-									 existInfo.setHandlerAvgTime(remotingInfo.getHandlerAvgTime());
-									 existInfo.setHandlerDataAvgSize(remotingInfo.getHandlerDataAvgSize());
-								 }
-							 }
+						for (Address address : existMap.keySet()) {
+
+							if (remotingMap.containsKey(address)) {
+								
+								ProviderInfo existInfo = existMap.get(address);
+								if (null != existInfo && remotingMap.get(address) != null) {
+									ProviderInfo remotingInfo = remotingMap.get(address);
+									existInfo.setCallCount(remotingInfo.getCallCount());
+									existInfo.setFailCount(remotingInfo.getFailCount());
+									existInfo.setHandlerAvgTime(remotingInfo.getHandlerAvgTime());
+								}
+							}
 						}
 					}
 				}
-				
+
 			} catch (InterruptedException | RemotingException e) {
-				logger.error("connection to monitor error address [{}] and exception [{}]",monitorAddress,e.getMessage());
+				logger.error("connection to monitor error address [{}] and exception [{}]", monitorAddress, e.getMessage());
 			}
-			
+
 		}
 	}
 
+	/**
+	 * 从注册中心(多个)中更新信息
+	 */
 	protected void getLastRegistryServerInfo() {
-
-		ManagerServiceCustomBody managerServiceCustomBody = new ManagerServiceCustomBody();
-		// 设置属性为==>统计
-		managerServiceCustomBody.setManagerServiceRequestType(ManagerServiceRequestType.METRICS);
-		RemotingTransporter requestTransporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.MANAGER_SERVICE, managerServiceCustomBody);
 
 		if (this.registryAddress != null) {
 
+			ManagerServiceCustomBody managerServiceCustomBody = new ManagerServiceCustomBody();
+			// 设置属性为==>统计
+			managerServiceCustomBody.setManagerServiceRequestType(ManagerServiceRequestType.METRICS);
+			RemotingTransporter requestTransporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.MANAGER_SERVICE, managerServiceCustomBody);
+
 			String[] registryAddresses = this.registryAddress.split(",");
-			
+
 			for (int index = 0; index < registryAddresses.length; index++) {
 				try {
 
 					RemotingTransporter responseTransporter = this.nettyRemotingClient.invokeSync(registryAddresses[index], requestTransporter, 3000l);
-					MetricsCustomBody registryMetricsCustomBody = serializerImpl().readObject(responseTransporter.bytes(),
-							MetricsCustomBody.class);
+					MetricsCustomBody registryMetricsCustomBody = serializerImpl().readObject(responseTransporter.bytes(), MetricsCustomBody.class);
 
 					List<ServiceMetrics> serviceMetricses = registryMetricsCustomBody.getServiceMetricses();
 
 					logger.info("response from registry address [{}] reveice info size [{}]", registryAddresses[index], serviceMetricses == null ? 0
 							: serviceMetricses.size());
 
-					if (null != serviceMetricses && serviceMetricses.size() > 0) {
-						
+					if (null != serviceMetricses && !serviceMetricses.isEmpty()) {
+
 						synchronized (globalServiceMetrics) {
+							
 							for (ServiceMetrics serviceMetrics : serviceMetricses) {
 
 								logger.info("ServiceMetrics [{}]", serviceMetrics);
 
 								ServiceMetrics currentServiceMetrics = globalServiceMetrics.get(serviceMetrics.getServiceName());
-								
+
 								if (currentServiceMetrics == null) {
 									currentServiceMetrics = new ServiceMetrics();
 									globalServiceMetrics.put(serviceMetrics.getServiceName(), currentServiceMetrics);
@@ -200,10 +221,10 @@ public class KaleidoscopeInfo {
 									providerInfos.clear();
 								}
 								consumerInfos.addAll(serviceMetrics.getConsumerInfos());
-								//合并2个map
+								// 合并2个map
 								ConcurrentMap<Address, ProviderInfo> concurrentMap = serviceMetrics.getProviderMaps();
-								if(null != concurrentMap && !concurrentMap.keySet().isEmpty()){
-									for(Address address : concurrentMap.keySet()){
+								if (null != concurrentMap && !concurrentMap.keySet().isEmpty()) {
+									for (Address address : concurrentMap.keySet()) {
 										providerInfos.put(address, concurrentMap.get(address));
 									}
 								}
@@ -211,29 +232,13 @@ public class KaleidoscopeInfo {
 						}
 					}
 				} catch (InterruptedException | RemotingException e) {
-					logger.error("connection to registry address[{}] failed", registryAddresses[index]);
+					logger.error("connection to registry address[{}] failed,and exception is [{}]", registryAddresses[index],e.getMessage());
 				}
 			}
 
 		}
 	}
-
-	public String getRegistryAddress() {
-		return registryAddress;
-	}
-
-	public void setRegistryAddress(String registryAddress) {
-		this.registryAddress = registryAddress;
-	}
-
-	public String getMonitorAddress() {
-		return monitorAddress;
-	}
-
-	public void setMonitorAddress(String monitorAddress) {
-		this.monitorAddress = monitorAddress;
-	}
-
+	
 	public Map<String, Object> findInfoByPage(int pageSize, int offset) {
 		Map<String, Object> resultMap = new HashMap<String, Object>();
 
@@ -254,7 +259,7 @@ public class KaleidoscopeInfo {
 	public Boolean notifyServiceForbidden(String host, int port, String serviceName) {
 		
 		ManagerServiceCustomBody managerServiceCustomBody = new ManagerServiceCustomBody();
-		// 设置属性为==>统计
+		// 设置属性为==>审核
 		managerServiceCustomBody.setManagerServiceRequestType(ManagerServiceRequestType.REVIEW);
 		managerServiceCustomBody.setAddress(new Address(host, port));
 		managerServiceCustomBody.setSerivceName(serviceName);
@@ -284,5 +289,56 @@ public class KaleidoscopeInfo {
 		}
 		return successFlag;
 	}
+	
+	public Boolean notifyServiceDegrade(String host, int port, String serviceName) {
+		
+		ManagerServiceCustomBody managerServiceCustomBody = new ManagerServiceCustomBody();
+		// 设置属性为==>审核
+		managerServiceCustomBody.setManagerServiceRequestType(ManagerServiceRequestType.DEGRADE);
+		managerServiceCustomBody.setAddress(new Address(host, port));
+		managerServiceCustomBody.setSerivceName(serviceName);
+		RemotingTransporter requestTransporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.MANAGER_SERVICE, managerServiceCustomBody);
+		
+		boolean successFlag = true;
+		
+		if(this.registryAddress != null){
+			
+	        String[] registryAddresses = this.registryAddress.split(",");
+	        
+				for (int index = 0; index < registryAddresses.length; index++) {
+					
+					try {
+						RemotingTransporter responseTransporter = this.nettyRemotingClient.invokeSync(registryAddresses[index], requestTransporter, 3000l);
+						AckCustomBody ackCustomBody = serializerImpl().readObject(responseTransporter.bytes(), AckCustomBody.class);
+						successFlag = successFlag && ackCustomBody.isSuccess();
+					} catch (InterruptedException | RemotingException e) {
+						logger.error("send notify fail serviceName[{}] and exception [{}]",serviceName,e.getMessage());
+						successFlag = false;
+					}
+					
+				}
+			}else{
+				successFlag = false;
+			}
+		return null;
+	}
+
+	public String getRegistryAddress() {
+		return registryAddress;
+	}
+
+	public void setRegistryAddress(String registryAddress) {
+		this.registryAddress = registryAddress;
+	}
+
+	public String getMonitorAddress() {
+		return monitorAddress;
+	}
+
+	public void setMonitorAddress(String monitorAddress) {
+		this.monitorAddress = monitorAddress;
+	}
+
+	
 
 }

@@ -5,6 +5,7 @@ import static org.laopopo.common.protocal.LaopopoProtocol.MERTRICS_SERVICE;
 import static org.laopopo.common.serialization.SerializerHolder.serializerImpl;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.util.internal.ConcurrentSet;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -79,10 +80,12 @@ public class DefaultMonitorProcessor implements NettyRequestProcessor {
 			String serviceName = body.getSerivceName();
 			ConcurrentMap<Address, MetricsReporter> maps = defaultMonitor.getGlobalMetricsReporter().get(serviceName);
 			ConcurrentMap<Address, MetricsReporter> historyMaps = defaultMonitor.getHistoryGlobalMetricsReporter().get(serviceName);
-			
+			//返回给管理页面的对象
 			ServiceMetrics metrics = new ServiceMetrics();
 			metrics.setServiceName(serviceName);
+			//从当前的统计信息中，构建返回体
 			buildMetrics(maps,metrics);
+			//从持久化信息中返回
 			buildMetrics(historyMaps,metrics);
 			List<ServiceMetrics> serviceMetricses = new ArrayList<ServiceMetrics>();
 			serviceMetricses.add(metrics);
@@ -95,14 +98,19 @@ public class DefaultMonitorProcessor implements NettyRequestProcessor {
 		
 		if(null != maps){
 			
+			int totalCallCount = 0;
+			int totalFailCount = 0;
+			Double totalTime = 0d;
 			for(Address address : maps.keySet()){
 				
 				MetricsReporter metricsReporter = maps.get(address);            
 				Long callCount = metricsReporter.getCallCount();
 				Long failCount = metricsReporter.getFailCount();
 				Double handlerAvgTime = metricsReporter.getHandlerAvgTime();
-				Double handlerDataAvgSize = metricsReporter.getHandlerAvgTime();
 				
+				totalCallCount += callCount;
+				totalFailCount += failCount;
+				totalTime += handlerAvgTime * callCount;
 				ConcurrentMap<Address, ProviderInfo> providerConcurrentMap = metrics.getProviderMaps();
 				
 				ProviderInfo info = providerConcurrentMap.get(address);
@@ -113,33 +121,46 @@ public class DefaultMonitorProcessor implements NettyRequestProcessor {
 					providerConcurrentMap.put(address, info);
 				}
 				
-				info.setHandlerAvgTime(info.getCallCount() + callCount == 0 ? 0d :new BigDecimal((metrics.getHandlerAvgTime() * metrics.getTotalCallCount() + handlerAvgTime * callCount) / (info.getCallCount() + callCount)).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue());
+				info.setHandlerAvgTime((info.getCallCount() + callCount == 0 ? 0d :new BigDecimal((metrics.getHandlerAvgTime() * metrics.getTotalCallCount() + handlerAvgTime * callCount) / (info.getCallCount() + callCount)).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue()));
 				info.setCallCount(info.getCallCount() + callCount);
 				info.setFailCount(info.getFailCount() + failCount);
-				info.setHandlerDataAvgSize(info.getHandlerDataAvgSize() + handlerDataAvgSize);
 				
 				
-				Double avgHandlerTime = metrics.getTotalCallCount() + info.getCallCount() == 0 ? 0 :new BigDecimal((metrics.getHandlerAvgTime() * metrics.getTotalCallCount() + handlerAvgTime * info.getCallCount()) / (metrics.getTotalCallCount() + info.getCallCount())).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue();
-				
-				metrics.setHandlerAvgTime(avgHandlerTime);
-				metrics.setTotalCallCount(metrics.getTotalCallCount() + info.getCallCount());
-				metrics.setTotalFailCount(metrics.getTotalFailCount() + info.getFailCount());
-				metrics.setTotalHandlerRequestBodySize(metrics.getTotalHandlerRequestBodySize() + info.getHandlerDataAvgSize());
 			}
+			metrics.setTotalCallCount(metrics.getTotalCallCount() + totalCallCount);
+			metrics.setTotalFailCount(metrics.getTotalFailCount() + totalFailCount);
+			Double existTotalTime = metrics.getTotalCallCount() * metrics.getHandlerAvgTime();
+			metrics.setHandlerAvgTime(new BigDecimal((existTotalTime + totalTime) / metrics.getTotalCallCount()).setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue());
 		}
 		
 	}
 
+	/**
+	 * 处理服务提供者发送过来的统计信息
+	 * 这边需要注意的是，因为服务提供端不是按照时间段去统计的，而是从服务启动的时候就开始统计，也就说服务提供端发送过来的信息是全量信息，不是增量信息
+	 * 所以我们这边要做的是将provider发送过来最新的信息替换monitor本地的信息，而不是将本地的信息与provider发送的信息做累加操作
+	 * 
+	 * @param request
+	 * @param channel
+	 * @return
+	 */
 	private RemotingTransporter handlerMetricsService(RemotingTransporter request, Channel channel) {
 		
+		//反序列化内容
 		ProviderMetricsCustomBody body = serializerImpl().readObject(request.bytes(),ProviderMetricsCustomBody.class);
 		
 		if(body.getMetricsReporter() != null && !body.getMetricsReporter().isEmpty()){
 			
-			
 			for(MetricsReporter metricsReporter : body.getMetricsReporter()){
 				
 				Address address = new Address(metricsReporter.getHost(), metricsReporter.getPort());
+				
+				ConcurrentSet<Address> addresses = defaultMonitor.getGlobalProviderReporter().get(channel);
+				if(addresses == null){
+					addresses = new ConcurrentSet<Address>();
+					defaultMonitor.getGlobalProviderReporter().put(channel, addresses);
+				}
+				addresses.add(address);
 				
 				String serviceName = metricsReporter.getServiceName();
 				ConcurrentMap<Address, MetricsReporter> maps = defaultMonitor.getGlobalMetricsReporter().get(serviceName);
@@ -153,4 +174,5 @@ public class DefaultMonitorProcessor implements NettyRequestProcessor {
 		
 		return null;
 	}
+	
 }

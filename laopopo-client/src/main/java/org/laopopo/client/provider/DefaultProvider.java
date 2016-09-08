@@ -132,7 +132,7 @@ public class DefaultProvider implements Provider {
 				logger.info("ready prepare send Report");
 				Metrics.scheduledSendReport();
 			}
-		}, 4, 60, TimeUnit.SECONDS);
+		}, 3, 60, TimeUnit.SECONDS);
 		
 		//如果监控中心的地址不是null，则需要定时发送统计信息
 		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
@@ -141,7 +141,7 @@ public class DefaultProvider implements Provider {
 				public void run() {
 					DefaultProvider.this.providerController.getProviderMonitorController().sendMetricsInfo();
 				}
-			}, 10, 60, TimeUnit.SECONDS);
+			}, 5, 60, TimeUnit.SECONDS);
 			
 			this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 

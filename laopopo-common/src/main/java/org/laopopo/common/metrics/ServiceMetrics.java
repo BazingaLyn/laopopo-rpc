@@ -22,7 +22,6 @@ public class ServiceMetrics {
 	private Long totalCallCount = 0l;                     							  //该服务的总共的统计次数
 	private Long totalFailCount = 0l;                    							  //该服务的总共的失败次数
 	private Double handlerAvgTime = 0d;
-	private Double totalHandlerRequestBodySize = 0d;    							  //该服务的请求的总大小
 	private ConcurrentMap<Address,ProviderInfo> providerMaps = 
 			new ConcurrentHashMap<Address, ProviderInfo>();     	                  //该服务的消费者的信息
 	private Set<ConsumerInfo> consumerInfos = new HashSet<ConsumerInfo>();        	  //该服务的提供者的信息
@@ -51,15 +50,6 @@ public class ServiceMetrics {
 	public void setTotalFailCount(Long totalFailCount) {
 		this.totalFailCount = totalFailCount;
 	}
-
-	public Double getTotalHandlerRequestBodySize() {
-		return totalHandlerRequestBodySize;
-	}
-
-	public void setTotalHandlerRequestBodySize(Double totalHandlerRequestBodySize) {
-		this.totalHandlerRequestBodySize = totalHandlerRequestBodySize;
-	}
-	
 
 	public ConcurrentMap<Address, ProviderInfo> getProviderMaps() {
 		return providerMaps;
@@ -131,7 +121,6 @@ public class ServiceMetrics {
 		private Long callCount = 0l;            //调用的次数
 		private Long failCount = 0l;            //失败的次数
 		private Double handlerAvgTime = 0d;     //处理的平均时间
-		private Double handlerDataAvgSize = 0d; //处理请求数据包的平均大小
 		private Boolean isDegradeService;       //是否已经降级
 		private Boolean isSupportDegrade;       //是否支持降级
 		private Boolean isVipService;           //是否是VIP服务
@@ -167,12 +156,6 @@ public class ServiceMetrics {
 		public void setHandlerAvgTime(Double handlerAvgTime) {
 			this.handlerAvgTime = handlerAvgTime;
 		}
-		public Double getHandlerDataAvgSize() {
-			return handlerDataAvgSize;
-		}
-		public void setHandlerDataAvgSize(Double handlerDataAvgSize) {
-			this.handlerDataAvgSize = handlerDataAvgSize;
-		}
 		public Boolean getIsDegradeService() {
 			return isDegradeService;
 		}
@@ -200,16 +183,16 @@ public class ServiceMetrics {
 		@Override
 		public String toString() {
 			return "ProviderInfo [port=" + port + ", host=" + host + ", callCount=" + callCount + ", failCount=" + failCount + ", handlerAvgTime="
-					+ handlerAvgTime + ", handlerDataAvgSize=" + handlerDataAvgSize + ", isDegradeService=" + isDegradeService + ", isSupportDegrade="
-					+ isSupportDegrade + ", isVipService=" + isVipService + ", serviceReviewState=" + serviceReviewState + "]";
+					+ handlerAvgTime + ", isDegradeService=" + isDegradeService + ", isSupportDegrade=" + isSupportDegrade + ", isVipService=" + isVipService
+					+ ", serviceReviewState=" + serviceReviewState + "]";
 		}
+		
 	}
 
 	@Override
 	public String toString() {
 		return "ServiceMetrics [serviceName=" + serviceName + ", totalCallCount=" + totalCallCount + ", totalFailCount=" + totalFailCount + ", handlerAvgTime="
-				+ handlerAvgTime + ", totalHandlerRequestBodySize=" + totalHandlerRequestBodySize + ", providerMaps=" + providerMaps + ", consumerInfos="
-				+ consumerInfos + ", loadBalanceStrategy=" + loadBalanceStrategy + "]";
+				+ handlerAvgTime + ", providerMaps=" + providerMaps + ", consumerInfos=" + consumerInfos + ", loadBalanceStrategy=" + loadBalanceStrategy + "]";
 	}
 
 }
