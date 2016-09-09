@@ -177,7 +177,9 @@ public class RegistryProviderManager implements RegistryProviderServer {
 			if(null != concurrentMap.get(serviceName)){
 				
 				RegistryPersistRecord persistRecord = concurrentMap.get(serviceName);
-				defaultBalanceStrategy = persistRecord.getBalanceStrategy();
+				if(null != persistRecord.getBalanceStrategy()){
+					defaultBalanceStrategy = persistRecord.getBalanceStrategy();
+				}
 			} 
 			
 			// 设置该服务默认的负载均衡的策略
