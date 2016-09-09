@@ -38,13 +38,11 @@ public class LocalServerWrapperManager {
 
 	private static final Logger logger = LoggerFactory.getLogger(LocalServerWrapperManager.class);
 	
-	private DefaultProvider defaultProvider;
 	private ProviderRegistryController providerController;
 	
 
-	public LocalServerWrapperManager(DefaultProvider defaultProvider) {
-		this.defaultProvider = defaultProvider;
-		this.providerController = defaultProvider.getProviderController();
+	public LocalServerWrapperManager(ProviderRegistryController providerRegistryController) {
+		this.providerController = providerRegistryController;
 	}
 
 	/**
@@ -169,7 +167,7 @@ public class LocalServerWrapperManager {
 							if(maxCallCount <= 0){
 								throw new RpcWrapperException("max call count must over zero at unit time");
 							}
-							ServiceFlowControllerManager serviceFlowControllerManager = defaultProvider.getServiceFlowControllerManager();
+							ServiceFlowControllerManager serviceFlowControllerManager = providerController.getServiceFlowControllerManager();
 							serviceFlowControllerManager.setServiceLimitVal(serviceName, maxCallCount);
 							//如果是支持服务降级服务，则需要根据降级方法的路径去创建这个实例，并编制proxy
 							if(isSupportDegradeService){

@@ -1,8 +1,6 @@
 package org.laopopo.client.provider;
 
-import io.netty.channel.Channel;
-
-import org.laopopo.remoting.model.RemotingTransporter;
+import org.laopopo.client.provider.flow.control.ServiceFlowControllerManager;
 
 
 /**
@@ -18,19 +16,17 @@ public class ProviderRegistryController {
 	
 	//provider与注册中心的所有逻辑控制器
 	private RegistryController registryController;
-	
 	//provider与monitor端通信的控制器
 	private ProviderMonitorController providerMonitorController;
-	
 	//本地服务编织服务管理
 	private LocalServerWrapperManager localServerWrapperManager;
-	
 	private final ServiceProviderContainer providerContainer;
+	private ServiceFlowControllerManager serviceFlowControllerManager = new ServiceFlowControllerManager();
 	
 	public ProviderRegistryController(DefaultProvider defaultProvider) {
 		this.defaultProvider = defaultProvider;
 		providerContainer = new DefaultServiceProviderContainer();
-		localServerWrapperManager = new LocalServerWrapperManager(defaultProvider);
+		localServerWrapperManager = new LocalServerWrapperManager(this);
 		registryController = new RegistryController(defaultProvider);
 		providerMonitorController = new ProviderMonitorController(defaultProvider);
 	}
@@ -71,10 +67,13 @@ public class ProviderRegistryController {
 		return providerContainer;
 	}
 
-	public RemotingTransporter handlerServiceDegrade(RemotingTransporter request, Channel channel) {
-		return null;
+	public ServiceFlowControllerManager getServiceFlowControllerManager() {
+		return serviceFlowControllerManager;
 	}
-	
+
+	public void setServiceFlowControllerManager(ServiceFlowControllerManager serviceFlowControllerManager) {
+		this.serviceFlowControllerManager = serviceFlowControllerManager;
+	}
 	
 	
 

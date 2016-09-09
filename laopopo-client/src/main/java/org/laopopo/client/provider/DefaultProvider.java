@@ -13,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.laopopo.client.metrics.Metrics;
 import org.laopopo.client.provider.DefaultServiceProviderContainer.CurrentServiceState;
-import org.laopopo.client.provider.flow.control.ServiceFlowControllerManager;
 import org.laopopo.client.provider.model.DefaultProviderInactiveProcessor;
 import org.laopopo.client.provider.model.ServiceWrapper;
 import org.laopopo.common.exception.remoting.RemotingException;
@@ -51,7 +50,6 @@ public class DefaultProvider implements Provider {
 	private ProviderRPCController providerRPCController; // consumer端远程调用的核心控制器
 	private ExecutorService remotingExecutor; // RPC调用的核心线程执行器
 	private ExecutorService remotingVipExecutor; // RPC调用的核心线程执行器
-	private ServiceFlowControllerManager serviceFlowControllerManager = new ServiceFlowControllerManager();
 	// 定时检查 TODO
 	private Channel monitorChannel; // 连接monitor端的channel
 
@@ -357,14 +355,6 @@ public class DefaultProvider implements Provider {
 
 	public void setGlobalPublishService(ConcurrentMap<String, PublishServiceCustomBody> globalPublishService) {
 		this.globalPublishService = globalPublishService;
-	}
-
-	public ServiceFlowControllerManager getServiceFlowControllerManager() {
-		return serviceFlowControllerManager;
-	}
-
-	public void setServiceFlowControllerManager(ServiceFlowControllerManager serviceFlowControllerManager) {
-		this.serviceFlowControllerManager = serviceFlowControllerManager;
 	}
 
 }

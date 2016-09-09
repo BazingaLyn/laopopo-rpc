@@ -1,5 +1,12 @@
 package org.laopopo.remoting.model;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description 
+ * @time 2016年8月9日
+ * @modifytime
+ */
 public class ByteHolder {
 	
 	private transient byte[] bytes;

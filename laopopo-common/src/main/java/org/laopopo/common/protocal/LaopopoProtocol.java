@@ -1,6 +1,13 @@
 package org.laopopo.common.protocal;
 
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description 网络传输的协议头信息
+ * @time 2016年8月9日
+ * @modifytime
+ */
 public class LaopopoProtocol {
 	
 	/** 协议头长度 */
@@ -9,9 +16,12 @@ public class LaopopoProtocol {
 	/** Magic */
     public static final short MAGIC = (short) 0xbabe;
     
+    /** 发送的是请求信息*/
     public static final byte REQUEST_REMOTING = 1;
     
+    /** 发送的是响应信息*/
     public static final byte RESPONSE_REMOTING = 2;
+    
     
     public static final byte RPC_REMOTING = 3;
     
@@ -25,30 +35,37 @@ public class LaopopoProtocol {
     //consumer端向registry订阅服务后返回的订阅结果
   	public static final byte SUBCRIBE_RESULT = 66;
   	
+  	//订阅服务取消
   	public static final byte SUBCRIBE_SERVICE_CANCEL = 67;
   	
+  	//取消发布服务
   	public static final byte PUBLISH_CANCEL_SERVICE = 68;
   	
   	//consumer发送给registry注册服务
   	public static final byte SUBSCRIBE_SERVICE = 69;
   	
+  	//管理服务的请求
   	public static final byte MANAGER_SERVICE = 70;
   	
-  	public static final byte OFFLINE_ADDRESS = 71;
-  	
+  	//远程调用的请求
   	public static final byte RPC_REQUEST = 72;
   	
+  	//降级
   	public static final byte DEGRADE_SERVICE = 73;
   	
+  	//调用调用的响应
   	public static final byte RPC_RESPONSE = 74;
   	
+  	//修改负载策略
   	public static final byte CHANGE_LOADBALANCE = 75;
   	
+  	//统计信息
   	public static final byte MERTRICS_SERVICE = 76;
   	
     //心跳
     public static final byte HEARTBEAT = 127;
     
+    //ACK
     public static final byte ACK = 126;
 
 	

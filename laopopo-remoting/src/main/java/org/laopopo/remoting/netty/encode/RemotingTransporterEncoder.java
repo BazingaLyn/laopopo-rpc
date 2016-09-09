@@ -9,6 +9,13 @@ import org.laopopo.remoting.model.RemotingTransporter;
 import static org.laopopo.common.protocal.LaopopoProtocol.MAGIC;
 import static org.laopopo.common.serialization.SerializerHolder.serializerImpl;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description
+ * @time
+ * @modifytime
+ */
 @ChannelHandler.Sharable
 public class RemotingTransporterEncoder extends MessageToByteEncoder<RemotingTransporter> {
 

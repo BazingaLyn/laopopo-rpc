@@ -85,7 +85,7 @@ public class ProviderRPCController {
         }
 		
 		// app flow control
-        ServiceFlowControllerManager serviceFlowControllerManager = defaultProvider.getServiceFlowControllerManager();
+        ServiceFlowControllerManager serviceFlowControllerManager = defaultProvider.getProviderController().getServiceFlowControllerManager();
         if (!serviceFlowControllerManager.isAllow(serviceName)) {
             rejected(APP_FLOW_CONTROL,channel, request,rejectionMeter);
             return;
