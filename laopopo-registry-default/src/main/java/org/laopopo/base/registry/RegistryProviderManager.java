@@ -6,14 +6,19 @@ import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 import io.netty.util.internal.ConcurrentSet;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.laopopo.base.registry.model.RegistryPersistRecord;
+import org.laopopo.base.registry.model.RegistryPersistRecord.PersistProviderInfo;
 import org.laopopo.common.exception.remoting.RemotingSendRequestException;
 import org.laopopo.common.exception.remoting.RemotingTimeoutException;
 import org.laopopo.common.loadbalance.LoadBalanceStrategy;
@@ -26,14 +31,17 @@ import org.laopopo.common.rpc.RegisterMeta.Address;
 import org.laopopo.common.rpc.ServiceReviewState;
 import org.laopopo.common.transport.body.AckCustomBody;
 import org.laopopo.common.transport.body.ManagerServiceCustomBody;
-import org.laopopo.common.transport.body.PublishServiceCustomBody;
 import org.laopopo.common.transport.body.MetricsCustomBody;
+import org.laopopo.common.transport.body.PublishServiceCustomBody;
 import org.laopopo.common.transport.body.SubcribeResultCustomBody;
 import org.laopopo.common.transport.body.SubscribeRequestCustomBody;
+import org.laopopo.common.utils.PersistUtils;
 import org.laopopo.remoting.ConnectionUtils;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.alibaba.fastjson.JSON;
 
 /**
  * 
@@ -60,6 +68,8 @@ public class RegistryProviderManager implements RegistryProviderServer {
 	private final ConcurrentMap<String, ConcurrentSet<Channel>> globalConsumerMetaMap = new ConcurrentHashMap<String, ConcurrentSet<Channel>>();
 	// 提供者某个地址对应的channel
 	private final ConcurrentMap<Address, Channel> globalProviderChannelMetaMap = new ConcurrentHashMap<RegisterMeta.Address, Channel>();
+	
+	private final ConcurrentMap<String, RegistryPersistRecord> historyRecords = new ConcurrentHashMap<String, RegistryPersistRecord>();
 
 	private final ConcurrentMap<String, LoadBalanceStrategy> globalServiceLoadBalance = new ConcurrentHashMap<String, LoadBalanceStrategy>();
 
@@ -109,7 +119,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		// 接收到主体信息
 		PublishServiceCustomBody publishServiceCustomBody = serializerImpl().readObject(remotingTransporter.bytes(), PublishServiceCustomBody.class);
 
-		RegisterMeta meta = RegisterMeta.createRegiserMeta(publishServiceCustomBody);
+		RegisterMeta meta = RegisterMeta.createRegiserMeta(publishServiceCustomBody,channel);
 
 		if (logger.isDebugEnabled()) {
 			logger.info("Publish [{}] on channel[{}].", meta, channel);
@@ -124,20 +134,55 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		ConcurrentMap<Address, RegisterMeta> maps = this.getRegisterMeta(serviceName);
 
 		synchronized (globalRegisterInfoMap) {
+			
+			ConcurrentMap<String, RegistryPersistRecord> concurrentMap = historyRecords; 
 
 			// 获取到这个地址可能以前注册过的注册信息
 			RegisterMeta existRegiserMeta = maps.get(meta.getAddress());
 
-			// 如果等于空，则说明以前没有注册过
+			// 如果等于空，则说明以前没有注册过 这就需要从历史记录中将某些服务以前注册审核的信息恢复一下记录
 			if (null == existRegiserMeta) {
+				
+				RegistryPersistRecord persistRecord = concurrentMap.get(serviceName);
+				//
+				if(null == persistRecord){
+					
+					persistRecord = new RegistryPersistRecord();
+					persistRecord.setServiceName(serviceName);
+					persistRecord.setBalanceStrategy(LoadBalanceStrategy.WEIGHTINGRANDOM);
+					
+					PersistProviderInfo providerInfo = new PersistProviderInfo();
+					providerInfo.setAddress(meta.getAddress());
+					providerInfo.setIsReviewed(ServiceReviewState.HAS_NOT_REVIEWED);
+					persistRecord.getProviderInfos().add(providerInfo);
+					
+					concurrentMap.put(serviceName, persistRecord);
+				}
+				
+				for(PersistProviderInfo providerInfo:persistRecord.getProviderInfos()){
+					
+					if(providerInfo.getAddress().equals(meta.getAddress())){
+						meta.setIsReviewed(providerInfo.getIsReviewed());
+					}
+				}
+					
 				existRegiserMeta = meta;
 				maps.put(meta.getAddress(), existRegiserMeta);
 			}
 
 			this.getServiceMeta(meta.getAddress()).add(serviceName);
-
+			
+			LoadBalanceStrategy defaultBalanceStrategy = LoadBalanceStrategy.WEIGHTINGRANDOM;
+			
+			if(null != concurrentMap.get(serviceName)){
+				
+				RegistryPersistRecord persistRecord = concurrentMap.get(serviceName);
+				defaultBalanceStrategy = persistRecord.getBalanceStrategy();
+			} 
+			
 			// 设置该服务默认的负载均衡的策略
-			globalServiceLoadBalance.put(serviceName, LoadBalanceStrategy.WEIGHTINGRANDOM);
+			globalServiceLoadBalance.put(serviceName, defaultBalanceStrategy);
+			
 
 			// 判断provider发送的信息已经被成功的存储的情况下，则告之服务注册成功
 			ackCustomBody.setSuccess(true);
@@ -274,7 +319,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		// 接收到主体信息
 		PublishServiceCustomBody publishServiceCustomBody = serializerImpl().readObject(request.bytes(), PublishServiceCustomBody.class);
 
-		RegisterMeta meta = RegisterMeta.createRegiserMeta(publishServiceCustomBody);
+		RegisterMeta meta = RegisterMeta.createRegiserMeta(publishServiceCustomBody,channel);
 
 		handlePublishCancel(meta, channel);
 
@@ -538,10 +583,11 @@ public class RegistryProviderManager implements RegistryProviderServer {
 					
 					notifyConsumer(serviceReviewState,reviewState,data,serviceName);
 					
-					
 				}
+				
 			} else { // 如果传递的地址是null，说明是审核该服务的所有地址
 				if (null != maps.values() && maps.values().size() > 0) {
+					
 					ackCustomBody.setSuccess(true);
 					for (RegisterMeta meta : maps.values()) {
 						ServiceReviewState serviceReviewState = meta.getIsReviewed();
@@ -614,5 +660,100 @@ public class RegistryProviderManager implements RegistryProviderServer {
 			}
 		}
 	}
+	
+	/**
+	 * 持久化操作
+	 * 原则：1)首先优先从globalRegisterInfoMap中持久化到库中
+	 *      2)如果globalRegisterInfoMap中没有信息，则从老版本中的historyRecords中的信息重新保存到硬盘中去,这样做的好处就是不需要多维护一个historyRecords这个全局变量的信息有效性
+	 *      
+	 * 这样做的原因是因为，只要有服务注册到注册中心，在注册的处理的时候，已经从历史中获取到以前审核和负载的情况，所以globalRegisterInfoMap中的信息是最新的
+	 * 如果有些服务以前注册过，但这次重启之后没有注册，所以就需要重新将其更新一下合并记录
+	 * @throws IOException
+	 */
+	public void persistServiceInfo() throws IOException {
+		
+		Map<String,RegistryPersistRecord> persistMap = new HashMap<String, RegistryPersistRecord>();
+		ConcurrentMap<String, ConcurrentMap<Address, RegisterMeta>> _globalRegisterInfoMap = this.globalRegisterInfoMap; //_stack copy
+		ConcurrentMap<String, LoadBalanceStrategy> _globalServiceLoadBalance = this.globalServiceLoadBalance; //_stack copy
+		ConcurrentMap<String, RegistryPersistRecord> _historyRecords = this.historyRecords;
+		
+		//globalRegisterInfoMap 中保存
+		if(_globalRegisterInfoMap.keySet() != null){
+			
+			for(String serviceName : _globalRegisterInfoMap.keySet()){
+				
+				RegistryPersistRecord persistRecord = new RegistryPersistRecord();
+				persistRecord.setServiceName(serviceName);
+				persistRecord.setBalanceStrategy(_globalServiceLoadBalance.get(serviceName));
+				
+				List<PersistProviderInfo> providerInfos = new ArrayList<PersistProviderInfo>();
+				ConcurrentMap<Address, RegisterMeta> serviceMap = _globalRegisterInfoMap.get(serviceName);
+				for(Address address : serviceMap.keySet()){
+					PersistProviderInfo info = new PersistProviderInfo();
+					info.setAddress(address);
+					info.setIsReviewed(serviceMap.get(address).getIsReviewed());
+					providerInfos.add(info);
+				}
+				persistRecord.setProviderInfos(providerInfos);
+				persistMap.put(serviceName, persistRecord);
+			}
+		}
+		
+		
+		if(null != _historyRecords.keySet()){
+			
+			for(String serviceName :_historyRecords.keySet()){
+				
+				//不包含的时候
+				if(!persistMap.keySet().contains(serviceName)){
+					persistMap.put(serviceName, _historyRecords.get(serviceName));
+				}else{
+					
+					//负载策略不需要合并更新，需要更新的是existRecord中没有的provider的信息
+					List<PersistProviderInfo> providerInfos = new ArrayList<PersistProviderInfo>();
+					RegistryPersistRecord existRecord = persistMap.get(serviceName);
+					providerInfos.addAll(existRecord.getProviderInfos());
+					
+					//可能需要合并的信息，合并原则，如果同地址的审核策略以globalRegisterInfoMap为准，如果不同地址，则合并信息
+					RegistryPersistRecord possibleMergeRecord = _historyRecords.get(serviceName);
+					List<PersistProviderInfo> possibleProviderInfos = possibleMergeRecord.getProviderInfos();
+					
+					for(PersistProviderInfo eachPossibleInfo : possibleProviderInfos){
+						
+						Address address = eachPossibleInfo.getAddress();
+						
+						boolean exist = false;
+						for(PersistProviderInfo existProviderInfo : providerInfos){
+							if(existProviderInfo.getAddress().equals(address)){
+								exist = true;
+								break;
+							}
+						}
+						if(!exist){
+							providerInfos.add(eachPossibleInfo);
+						}
+					}
+					existRecord.setProviderInfos(providerInfos);
+					persistMap.put(serviceName, existRecord);
+				}
+			}
+			
+			if(null != persistMap.values() && !persistMap.values().isEmpty()){
+				
+				String jsonString = JSON.toJSONString(persistMap.values());
+				
+				if(jsonString != null){
+					PersistUtils.string2File(jsonString, this.defaultRegistryServer.getRegistryServerConfig().getStorePathRootDir());
+				}
+			}
+		}
+	}
+
+	public ConcurrentMap<String, RegistryPersistRecord> getHistoryRecords() {
+		return historyRecords;
+	}
+
+	
+	
 
 }

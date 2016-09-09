@@ -5,6 +5,7 @@ import java.util.Map;
 
 import javax.annotation.Resource;
 
+import org.laopopo.common.rpc.ServiceReviewState;
 import org.laopopo.console.info.kaleidoscope.KaleidoscopeInfo;
 import org.laopopo.console.model.ManagerRPC;
 import org.slf4j.Logger;
@@ -25,12 +26,13 @@ import org.springframework.web.bind.annotation.ResponseBody;
 public class MonitorCoreController {
 
 	private static final Logger logger = LoggerFactory.getLogger(MonitorCoreController.class);
-	
+
 	@Resource
 	private KaleidoscopeInfo kaleidoscopeInfo;
 
 	@ResponseBody
-	@RequestMapping(value = "/index.do") //首页初始化
+	@RequestMapping(value = "/index.do")
+	// 首页初始化
 	public Map<String, Object> initTable(@RequestParam Map<String, Object> requestMap) {
 		int pageSize = 10;
 		int offset = 1;
@@ -45,27 +47,31 @@ public class MonitorCoreController {
 			logger.info(e.getMessage());
 		}
 
-
-		Map<String, Object> resultMap = kaleidoscopeInfo.findInfoByPage(pageSize,offset);
+		Map<String, Object> resultMap = kaleidoscopeInfo.findInfoByPage(pageSize, offset);
 		return resultMap;
 	}
-	
+
 	@ResponseBody
-	@RequestMapping(value = "/manager.do") //管理请求
+	@RequestMapping(value = "/manager.do")
+	// 管理请求
 	public Map<String, Object> managerRpc(ManagerRPC managerRPC) {
 		Map<String, Object> resultMap = new HashMap<String, Object>();
-		
+
 		Boolean operationFlag = false;
-		
-		//禁用
-		if(managerRPC.getManagerType() == 1) {
-			operationFlag  = kaleidoscopeInfo.notifyServiceForbidden(managerRPC.getHost(),managerRPC.getPort(),managerRPC.getServiceName());
+
+		// 禁用
+		if (managerRPC.getManagerType() == 1) {
+			operationFlag = kaleidoscopeInfo.notifyReviewService(managerRPC.getHost(), managerRPC.getPort(), managerRPC.getServiceName(),ServiceReviewState.FORBIDDEN);
 		}
-		//降级
-		if(managerRPC.getManagerType() == 2) {
-			operationFlag  = kaleidoscopeInfo.notifyServiceDegrade(managerRPC.getHost(),managerRPC.getPort(),managerRPC.getServiceName());
+		// 降级
+		if (managerRPC.getManagerType() == 2) {
+			operationFlag = kaleidoscopeInfo.notifyServiceDegrade(managerRPC.getHost(), managerRPC.getPort(), managerRPC.getServiceName());
 		}
-		
+		// 审核通过
+		if (managerRPC.getManagerType() == 5) {
+			operationFlag = kaleidoscopeInfo.notifyReviewService(managerRPC.getHost(), managerRPC.getPort(), managerRPC.getServiceName(),ServiceReviewState.PASS_REVIEW);
+		}
+
 		resultMap.put("status", operationFlag);
 		return resultMap;
 	}

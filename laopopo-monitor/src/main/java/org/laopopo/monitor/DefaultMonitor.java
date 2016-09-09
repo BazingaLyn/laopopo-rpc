@@ -82,7 +82,7 @@ public class DefaultMonitor implements MonitorNode {
 				"MonitorChannelInActiveExecutorThread_"));
 
 		// 从硬盘上恢复历史统计数据
-		recoverFromDisk();
+		this.recoverFromDisk();
 
 		// 注册处理器
 		this.registerProcessor();
@@ -101,7 +101,6 @@ public class DefaultMonitor implements MonitorNode {
 
 	}
 
-	@SuppressWarnings("unchecked")
 	private void recoverFromDisk() {
 		String persistString = PersistUtils.file2String(monitorConfig.getStorePathRootDir());
 

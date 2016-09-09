@@ -27,4 +27,6 @@ public @interface RPCService {
 	
 	public String degradeServiceDesc() default "";
 	
+	public long maxCallCountInMinute() default 10000;
+	
 }

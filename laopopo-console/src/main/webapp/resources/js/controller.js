@@ -150,7 +150,7 @@ function detailFormatter(index, row) {
 						+'<td>'+callSuccessRatio+'</td>'
 						+'<td><button class="btn btn-success btn-xs" onclick=forbidden("'+value[obj].host+'",'+value[obj].port+',"'+row.serviceName+'")>禁用</button>'
 						+'&nbsp;&nbsp;<button class="btn btn-success btn-xs" onclick=degradeService("'+value[obj].host+'",'+value[obj].port+',"'+row.serviceName+'")>降级</button>'
-						+'&nbsp;&nbsp;<button class="btn btn-success btn-xs">审核通过</button></td></tr>';
+						+'&nbsp;&nbsp;<button class="btn btn-success btn-xs" onclick=reviewService("'+value[obj].host+'",'+value[obj].port+',"'+row.serviceName+'")>审核通过</button></td></tr>';
 			}
 		}
 	});
@@ -173,6 +173,25 @@ function detailFormatter(index, row) {
 	});
 	html += "</tbody></table>";
 	return html;
+}
+
+function reviewService(host,port,serviceName){
+	$.ajax({
+        url: "/laopopo-console/manager.do",
+        type: 'GET',
+        data: {
+        	"managerType" : 5,
+        	"host":host,
+        	"port":port,
+        	"serviceName":serviceName
+        },
+        async: false,
+        success: function(result) {
+        	 if(result.status){
+        		 $("#monitorTable").bootstrapTable('refresh');
+        	 }
+		}
+	});
 }
 
 function degradeService(host,port,serviceName){

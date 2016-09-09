@@ -17,7 +17,7 @@ import javax.management.ServiceNotFoundException;
 
 import org.laopopo.client.metrics.Metrics;
 import org.laopopo.client.provider.DefaultServiceProviderContainer.CurrentServiceState;
-import org.laopopo.client.provider.flow.control.ControlResult;
+import org.laopopo.client.provider.flow.control.ServiceFlowControllerManager;
 import org.laopopo.client.provider.model.ServiceWrapper;
 import org.laopopo.common.exception.rpc.BadRequestException;
 import org.laopopo.common.exception.rpc.FlowControlException;
@@ -33,7 +33,6 @@ import org.laopopo.remoting.model.RemotingTransporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
 
@@ -79,16 +78,16 @@ public class ProviderRPCController {
 			return;
 		}
 		
-		final Pair<CurrentServiceState, ServiceWrapper> pair = defaultProvider.getProviderController().getProviderContainer().lookupService(body.getServiceName());
+		final Pair<CurrentServiceState, ServiceWrapper> pair = defaultProvider.getProviderController().getProviderContainer().lookupService(serviceName);
 		if (pair == null || pair.getValue() == null) {
             rejected(SERVICE_NOT_FOUND, channel, request,rejectionMeter);
             return;
         }
 		
 		// app flow control
-        ControlResult ctrlResult = defaultProvider.getGlobalController().flowControl();
-        if (!ctrlResult.isAllowed()) {
-            rejected(APP_FLOW_CONTROL, ctrlResult,channel, request,rejectionMeter);
+        ServiceFlowControllerManager serviceFlowControllerManager = defaultProvider.getServiceFlowControllerManager();
+        if (!serviceFlowControllerManager.isAllow(serviceName)) {
+            rejected(APP_FLOW_CONTROL,channel, request,rejectionMeter);
             return;
         }
         
@@ -141,11 +140,7 @@ public class ProviderRPCController {
 		
 	}
 
-	private void rejected(Status status, Channel channel, RemotingTransporter request,Meter rejectionMeter) {
-		rejected(status, null, channel, request,rejectionMeter);
-	}
-
-	private void rejected(Status status, Object signal, Channel channel, final RemotingTransporter request,Meter rejectionMeter) {
+	private void rejected(Status status, Channel channel, final RemotingTransporter request,Meter rejectionMeter) {
 
 		rejectionMeter.mark();
 		ResultWrapper result = new ResultWrapper();
@@ -160,11 +155,7 @@ public class ProviderRPCController {
 			break;
 		case APP_FLOW_CONTROL:
 		case PROVIDER_FLOW_CONTROL:
-			if (signal != null && signal instanceof ControlResult) {
-				result.setError(new FlowControlException(((ControlResult) signal).getMessage()));
-			} else {
-				result.setError(new FlowControlException());
-			}
+			result.setError(new FlowControlException());
 			break;
 		default:
 			logger.warn("Unexpected status.", status.description());

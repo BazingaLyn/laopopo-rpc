@@ -3,6 +3,7 @@ package org.laopopo.client.loadbalance;
 import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.laopopo.common.utils.ChannelGroup;
 
@@ -11,7 +12,7 @@ import org.laopopo.common.utils.ChannelGroup;
  * @author BazingaLyn
  * @description 负载均衡算法
  * @time 2016年9月1日17:48:47
- * @modifytime //TODO 轮询算法暂未实现
+ * @modifytime 2016年9月8日
  */
 public enum LoadBalanceStrategies {
 	
@@ -73,6 +74,29 @@ public enum LoadBalanceStrategies {
 		private int getWeight(ChannelGroup channelGroup) {
 			return channelGroup.getWeight();
 		}
+		
+	}), 
+	
+	ROUNDROBIN(new LoadBalance(){
+		
+		AtomicInteger position = new AtomicInteger(0);
+
+		@Override
+		public ChannelGroup select(CopyOnWriteArrayList<ChannelGroup> arrayList) {
+			int count = arrayList.size();
+			if (count == 0) {
+				throw new IllegalArgumentException("empty elements for select");
+			}
+			if (count == 1) {
+				return arrayList.get(0);
+			}
+			
+			ChannelGroup channelGroup = arrayList.get(position.getAndIncrement() / count);
+			
+			return channelGroup;
+
+		}
+		
 		
 	});
 	

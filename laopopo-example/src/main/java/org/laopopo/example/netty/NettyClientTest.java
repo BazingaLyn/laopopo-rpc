@@ -1,7 +1,6 @@
 package org.laopopo.example.netty;
 
 import org.laopopo.common.exception.remoting.RemotingException;
-import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.laopopo.remoting.netty.NettyClientConfig;
 import org.laopopo.remoting.netty.NettyRemotingClient;

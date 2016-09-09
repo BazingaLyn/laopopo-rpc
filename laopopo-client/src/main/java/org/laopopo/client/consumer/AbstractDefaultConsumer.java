@@ -94,8 +94,8 @@ public abstract class AbstractDefaultConsumer implements Consumer {
 			return LoadBalanceStrategies.RANDOMSTRATEGIES.select(list);
 		case WEIGHTINGRANDOM:
 			return LoadBalanceStrategies.WEIGHTRANDOMSTRATEGIES.select(list);
-		case ROUNDROBIN: //TODO
-			return LoadBalanceStrategies.WEIGHTRANDOMSTRATEGIES.select(list);
+		case ROUNDROBIN: 
+			return LoadBalanceStrategies.ROUNDROBIN.select(list);
 		default:
 			break;
 		}

@@ -30,7 +30,7 @@ public class ProviderRegistryController {
 	public ProviderRegistryController(DefaultProvider defaultProvider) {
 		this.defaultProvider = defaultProvider;
 		providerContainer = new DefaultServiceProviderContainer();
-		localServerWrapperManager = new LocalServerWrapperManager(this);
+		localServerWrapperManager = new LocalServerWrapperManager(defaultProvider);
 		registryController = new RegistryController(defaultProvider);
 		providerMonitorController = new ProviderMonitorController(defaultProvider);
 	}

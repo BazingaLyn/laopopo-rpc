@@ -17,9 +17,10 @@ import java.util.List;
 import net.bytebuddy.ByteBuddy;
 
 import org.laopopo.client.annotation.RPCService;
-import org.laopopo.client.provider.flow.control.FlowController;
+import org.laopopo.client.provider.flow.control.ServiceFlowControllerManager;
 import org.laopopo.client.provider.interceptor.ProviderProxyHandler;
 import org.laopopo.client.provider.model.ServiceWrapper;
+import org.laopopo.common.exception.rpc.RpcWrapperException;
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.transport.body.PublishServiceCustomBody;
 import org.laopopo.remoting.model.RemotingTransporter;
@@ -37,10 +38,13 @@ public class LocalServerWrapperManager {
 
 	private static final Logger logger = LoggerFactory.getLogger(LocalServerWrapperManager.class);
 	
+	private DefaultProvider defaultProvider;
 	private ProviderRegistryController providerController;
+	
 
-	public LocalServerWrapperManager(ProviderRegistryController providerController) {
-		this.providerController = providerController;
+	public LocalServerWrapperManager(DefaultProvider defaultProvider) {
+		this.defaultProvider = defaultProvider;
+		this.providerController = defaultProvider.getProviderController();
 	}
 
 	/**
@@ -50,7 +54,7 @@ public class LocalServerWrapperManager {
 	 * @param obj 暴露的方法的实例
 	 * @return
 	 */
-	public List<RemotingTransporter> wrapperRegisterInfo(String listeningAddress, FlowController controller, Object... obj) {
+	public List<RemotingTransporter> wrapperRegisterInfo(int port, Object... obj) {
 
 		List<RemotingTransporter> remotingTransporters = new ArrayList<RemotingTransporter>();
 		
@@ -62,20 +66,15 @@ public class LocalServerWrapperManager {
 				//默认的编织对象
 				DefaultServiceWrapper defaultServiceWrapper = new DefaultServiceWrapper();
 				
-				List<ServiceWrapper> serviceWrappers = defaultServiceWrapper.provider(o).flowController(controller).create();
+				List<ServiceWrapper> serviceWrappers = defaultServiceWrapper.provider(o).create();
 				
 				if(null != serviceWrappers  && !serviceWrappers.isEmpty()){
 					for(ServiceWrapper serviceWrapper : serviceWrappers){
 						
-						
-						String[] address = listeningAddress.split(":");
-						String host = address[0];
-						int port = Integer.parseInt(address[1]);
 						PublishServiceCustomBody commonCustomHeader = new PublishServiceCustomBody();
 						commonCustomHeader.setConnCount(serviceWrapper.getConnCount());
 						commonCustomHeader.setDegradeServiceDesc(serviceWrapper.getDegradeServiceDesc());
 						commonCustomHeader.setDegradeServicePath(serviceWrapper.getDegradeServicePath());
-						commonCustomHeader.setHost(host);
 						commonCustomHeader.setPort(port);
 						commonCustomHeader.setServiceProviderName(serviceWrapper.getServiceName());
 						commonCustomHeader.setVIPService(serviceWrapper.isVIPService());
@@ -108,13 +107,6 @@ public class LocalServerWrapperManager {
 		private Object serviceProvider;
 		//该方法降级时所对应的mock对象实例(最好是两个同样的接口)
 		private Object mockDegradeServiceProvider;
-		protected FlowController flowController;
-		
-		@Override
-		public ServiceWrapperWorker flowController(FlowController flowController){
-			this.flowController = flowController;
-			return this;
-		}
 
 		@Override
 		public ServiceWrapperWorker provider(Object serviceProvider) {
@@ -172,6 +164,13 @@ public class LocalServerWrapperManager {
 							String degradeServicePath = rpcService.degradeServicePath();
 							//降级方法的描述
 							String degradeServiceDesc = rpcService.degradeServiceDesc();
+							//每分钟调用的最大调用次数
+							Long maxCallCount = rpcService.maxCallCountInMinute();
+							if(maxCallCount <= 0){
+								throw new RpcWrapperException("max call count must over zero at unit time");
+							}
+							ServiceFlowControllerManager serviceFlowControllerManager = defaultProvider.getServiceFlowControllerManager();
+							serviceFlowControllerManager.setServiceLimitVal(serviceName, maxCallCount);
 							//如果是支持服务降级服务，则需要根据降级方法的路径去创建这个实例，并编制proxy
 							if(isSupportDegradeService){
 								Class<?> degradeClass = null;
@@ -186,6 +185,7 @@ public class LocalServerWrapperManager {
 									}
 								} catch (Exception e) {
 									logger.error("[{}] class can not create by reflect [{}]",degradeServicePath,e.getMessage());
+									throw new RpcWrapperException("degradeService path " + degradeServicePath +"create failed" ); 
 								} 
 								
 							}
@@ -206,8 +206,7 @@ public class LocalServerWrapperManager {
 																			   degradeServiceDesc,
 																			   weight,
 																			   connCount,
-																			   isVIPService,
-																			   flowController);
+																			   isVIPService);
 							//放入到一个缓存中，方便以后consumer来调取服务的时候，该来获取对应真正的编织类
 							providerController.getProviderContainer().registerService(serviceName, serviceWrapper);
 							

@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.laopopo.client.metrics.Metrics;
 import org.laopopo.client.provider.DefaultServiceProviderContainer.CurrentServiceState;
-import org.laopopo.client.provider.flow.control.FlowController;
+import org.laopopo.client.provider.flow.control.ServiceFlowControllerManager;
 import org.laopopo.client.provider.model.DefaultProviderInactiveProcessor;
 import org.laopopo.client.provider.model.ServiceWrapper;
 import org.laopopo.common.exception.remoting.RemotingException;
@@ -23,7 +23,6 @@ import org.laopopo.common.transport.body.ManagerServiceCustomBody;
 import org.laopopo.common.transport.body.PublishServiceCustomBody;
 import org.laopopo.common.utils.NamedThreadFactory;
 import org.laopopo.common.utils.Pair;
-import org.laopopo.remoting.ConnectionUtils;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.laopopo.remoting.netty.NettyClientConfig;
 import org.laopopo.remoting.netty.NettyRemotingClient;
@@ -43,30 +42,29 @@ public class DefaultProvider implements Provider {
 
 	private static final Logger logger = LoggerFactory.getLogger(DefaultProvider.class);
 
-	private NettyClientConfig clientConfig;                // 向注册中心连接的netty client配置
-	private NettyServerConfig serverConfig;				   // 等待服务提供者连接的netty server的配置
-	private NettyRemotingClient nettyRemotingClient;       // 连接monitor和注册中心
-	private NettyRemotingServer nettyRemotingServer;       // 等待被Consumer连接
-	private NettyRemotingServer nettyRemotingVipServer;    // 等待被Consumer VIP连接
+	private NettyClientConfig clientConfig; // 向注册中心连接的netty client配置
+	private NettyServerConfig serverConfig; // 等待服务提供者连接的netty server的配置
+	private NettyRemotingClient nettyRemotingClient; // 连接monitor和注册中心
+	private NettyRemotingServer nettyRemotingServer; // 等待被Consumer连接
+	private NettyRemotingServer nettyRemotingVipServer; // 等待被Consumer VIP连接
 	private ProviderRegistryController providerController; // provider端向注册中心连接的业务逻辑的控制器
-	private ProviderRPCController providerRPCController;   // consumer端远程调用的核心控制器
-	private ExecutorService remotingExecutor;              // RPC调用的核心线程执行器
-	private ExecutorService remotingVipExecutor;           // RPC调用的核心线程执行器
-    //定时检查 TODO
-	private Channel monitorChannel;                        // 连接monitor端的channel
+	private ProviderRPCController providerRPCController; // consumer端远程调用的核心控制器
+	private ExecutorService remotingExecutor; // RPC调用的核心线程执行器
+	private ExecutorService remotingVipExecutor; // RPC调用的核心线程执行器
+	private ServiceFlowControllerManager serviceFlowControllerManager = new ServiceFlowControllerManager();
+	// 定时检查 TODO
+	private Channel monitorChannel; // 连接monitor端的channel
 
 	/********* 要发布的服务的信息 ***********/
 	private List<RemotingTransporter> publishRemotingTransporters;
-	/************全局发布的信息************/
+	/************ 全局发布的信息 ************/
 	private ConcurrentMap<String, PublishServiceCustomBody> globalPublishService = new ConcurrentHashMap<String, PublishServiceCustomBody>();
 	/***** 注册中心的地址 ******/
 	private String registryAddress;
 	/******* 服务暴露给consumer的地址 ********/
-	private String serviceListenAddress;
+	private int exposePort;
 	/************* 监控中心的monitor的地址 *****************/
 	private String monitorAddress;
-	/********* 该机器实例提供的全局限流器 ************/
-	private FlowController globalController;
 	/*********** 要提供的服务 ***************/
 	private Object[] obj;
 
@@ -111,7 +109,7 @@ public class DefaultProvider implements Provider {
 				}
 			}
 		}, 60, 60, TimeUnit.SECONDS);
-		
+
 		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
 			@Override
@@ -124,7 +122,7 @@ public class DefaultProvider implements Provider {
 				}
 			}
 		}, 1, 1, TimeUnit.MINUTES);
-		
+
 		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
 			@Override
@@ -133,27 +131,27 @@ public class DefaultProvider implements Provider {
 				Metrics.scheduledSendReport();
 			}
 		}, 3, 60, TimeUnit.SECONDS);
-		
-		//如果监控中心的地址不是null，则需要定时发送统计信息
+
+		// 如果监控中心的地址不是null，则需要定时发送统计信息
 		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
-				@Override
-				public void run() {
-					DefaultProvider.this.providerController.getProviderMonitorController().sendMetricsInfo();
-				}
-			}, 5, 60, TimeUnit.SECONDS);
-			
-			this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
+			@Override
+			public void run() {
+				DefaultProvider.this.providerController.getProviderMonitorController().sendMetricsInfo();
+			}
+		}, 5, 60, TimeUnit.SECONDS);
 
-				@Override
-				public void run() {
-					try {
-						DefaultProvider.this.providerController.getProviderMonitorController().checkMonitorChannel();
-					} catch (InterruptedException e) {
-						logger.warn("schedule check monitor channel failed [{}]", e.getMessage());
-					}
+		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
+
+			@Override
+			public void run() {
+				try {
+					DefaultProvider.this.providerController.getProviderMonitorController().checkMonitorChannel();
+				} catch (InterruptedException e) {
+					logger.warn("schedule check monitor channel failed [{}]", e.getMessage());
 				}
-			}, 30, 60, TimeUnit.SECONDS);
+			}
+		}, 30, 60, TimeUnit.SECONDS);
 	}
 
 	private void registerProcessor() {
@@ -190,21 +188,9 @@ public class DefaultProvider implements Provider {
 		providerRPCController.handlerRPCRequest(request, channel);
 	}
 
-	/**
-	 * 设置暴露服务的地址
-	 * 
-	 * @param serviceListenAddress
-	 * @return
-	 */
 	@Override
-	public Provider globalController(FlowController globalController) {
-		this.globalController = globalController;
-		return this;
-	}
-
-	@Override
-	public Provider serviceListenAddress(String serviceListenAddress) {
-		this.serviceListenAddress = serviceListenAddress;
+	public Provider serviceListenPort(int port) {
+		this.exposePort = port;
 		return this;
 	}
 
@@ -224,13 +210,11 @@ public class DefaultProvider implements Provider {
 	public void start() throws InterruptedException, RemotingException {
 
 		// 编织服务
-		this.publishRemotingTransporters = providerController.getLocalServerWrapperManager().wrapperRegisterInfo(this.getServiceListenAddress(),
-				this.getGlobalController(), this.obj);
+		this.publishRemotingTransporters = providerController.getLocalServerWrapperManager().wrapperRegisterInfo(this.getExposePort(), this.obj);
 
-		logger.info("registry center address [{}] serviceAddress [{}] service [{}]", this.registryAddress, this.serviceListenAddress,
-				this.publishRemotingTransporters);
-		
-		//记录发布的信息的记录，方便其他地方做使用
+		logger.info("registry center address [{}] servicePort [{}] service [{}]", this.registryAddress, this.exposePort, this.publishRemotingTransporters);
+
+		// 记录发布的信息的记录，方便其他地方做使用
 		initGlobalService();
 
 		nettyRemotingClient.start();
@@ -238,15 +222,13 @@ public class DefaultProvider implements Provider {
 		this.publishedAndStartProvider();
 		logger.info("provider start successfully");
 
-		if (serviceListenAddress != null) {
-			int port = ConnectionUtils.getPortFromAddress(serviceListenAddress);
-			this.serverConfig.setListenPort(port);
-			this.nettyRemotingServer.start();
+		int _port = this.exposePort;
+		this.serverConfig.setListenPort(exposePort);
+		this.nettyRemotingServer.start();
 
-			int vipPort = port - 2;
-			this.serverConfig.setListenPort(vipPort);
-			this.nettyRemotingVipServer.start();
-		}
+		int vipPort = _port - 2;
+		this.serverConfig.setListenPort(vipPort);
+		this.nettyRemotingVipServer.start();
 
 		if (monitorAddress != null) {
 			initMonitorChannel();
@@ -255,11 +237,12 @@ public class DefaultProvider implements Provider {
 	}
 
 	private void initGlobalService() {
-		List<RemotingTransporter> list = this.publishRemotingTransporters; //Stack copy
-		
-		if(null != list &&!list.isEmpty()){
-			for(RemotingTransporter remotingTransporter : list){
-				PublishServiceCustomBody customBody = (PublishServiceCustomBody)remotingTransporter.getCustomHeader();
+		List<RemotingTransporter> list = this.publishRemotingTransporters; // Stack
+																			// copy
+
+		if (null != list && !list.isEmpty()) {
+			for (RemotingTransporter remotingTransporter : list) {
+				PublishServiceCustomBody customBody = (PublishServiceCustomBody) remotingTransporter.getCustomHeader();
 				String serviceName = customBody.getServiceProviderName();
 				this.globalPublishService.put(serviceName, customBody);
 			}
@@ -332,12 +315,12 @@ public class DefaultProvider implements Provider {
 		return registryAddress;
 	}
 
-	public String getServiceListenAddress() {
-		return serviceListenAddress;
+	public int getExposePort() {
+		return exposePort;
 	}
 
-	public FlowController getGlobalController() {
-		return globalController;
+	public void setExposePort(int exposePort) {
+		this.exposePort = exposePort;
 	}
 
 	public ProviderRPCController getProviderRPCController() {
@@ -375,6 +358,13 @@ public class DefaultProvider implements Provider {
 	public void setGlobalPublishService(ConcurrentMap<String, PublishServiceCustomBody> globalPublishService) {
 		this.globalPublishService = globalPublishService;
 	}
-	
+
+	public ServiceFlowControllerManager getServiceFlowControllerManager() {
+		return serviceFlowControllerManager;
+	}
+
+	public void setServiceFlowControllerManager(ServiceFlowControllerManager serviceFlowControllerManager) {
+		this.serviceFlowControllerManager = serviceFlowControllerManager;
+	}
 
 }

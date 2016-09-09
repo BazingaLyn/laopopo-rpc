@@ -10,7 +10,7 @@ package org.laopopo.console.model;
 public class ManagerRPC {
 	
 	
-	private Integer managerType; // 1 禁用 2 降级 3解禁 4取消降级 5
+	private Integer managerType; // 1 禁用 2 降级 3解禁 4取消降级 5 审核通过
 	private String host;		 //host
 	private int port;			 //port
 	private String serviceName;  //服务名

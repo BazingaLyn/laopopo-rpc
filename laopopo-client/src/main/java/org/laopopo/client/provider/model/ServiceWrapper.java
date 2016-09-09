@@ -5,8 +5,6 @@ import static org.laopopo.common.utils.Constants.DEFAULT_WEIGHT;
 
 import java.util.List;
 
-import org.laopopo.client.provider.flow.control.FlowController;
-
 /**
  * 
  * @author BazingaLyn
@@ -49,11 +47,9 @@ public class ServiceWrapper {
 
 	private volatile int connCount = DEFAULT_CONNECTION_COUNT;
 
-	private volatile FlowController flowController;
-
 	public ServiceWrapper(Object serviceProvider, Object mockDegradeServiceProvider, String serviceName,
 			String responsiblityName, String methodName, List<Class<?>[]> paramters, boolean isSupportDegradeService, String degradeServicePath,
-			String degradeServiceDesc, int weight, int connCount,boolean isVIPService, FlowController flowController) {
+			String degradeServiceDesc, int weight, int connCount,boolean isVIPService) {
 		this.serviceProvider = serviceProvider;
 		this.mockDegradeServiceProvider = mockDegradeServiceProvider;
 		this.serviceName = serviceName;
@@ -66,7 +62,6 @@ public class ServiceWrapper {
 		this.weight = weight;
 		this.connCount = connCount;
 		this.isVIPService = isVIPService;
-		this.flowController = flowController;
 	}
 
 	public Object getServiceProvider() {
@@ -156,14 +151,6 @@ public class ServiceWrapper {
 	public void setConnCount(int connCount) {
 		this.connCount = connCount;
 	}
-
-	public FlowController getFlowController() {
-		return flowController;
-	}
-
-	public void setFlowController(FlowController flowController) {
-		this.flowController = flowController;
-	}
 	
 	public boolean isVIPService() {
 		return isVIPService;
@@ -172,15 +159,14 @@ public class ServiceWrapper {
 	public void setVIPService(boolean isVIPService) {
 		this.isVIPService = isVIPService;
 	}
-	
 
 	@Override
 	public String toString() {
 		return "ServiceWrapper [serviceProvider=" + serviceProvider + ", mockDegradeServiceProvider=" + mockDegradeServiceProvider + ", serviceName="
 				+ serviceName + ", responsiblityName=" + responsiblityName + ", methodName=" + methodName + ", paramters=" + paramters
 				+ ", isSupportDegradeService=" + isSupportDegradeService + ", degradeServicePath=" + degradeServicePath + ", degradeServiceDesc="
-				+ degradeServiceDesc + ", isVIPService=" + isVIPService + ", weight=" + weight + ", connCount=" + connCount + ", flowController="
-				+ flowController + "]";
+				+ degradeServiceDesc + ", isVIPService=" + isVIPService + ", weight=" + weight + ", connCount=" + connCount + "]";
 	}
+	 
 	
 }

@@ -256,14 +256,14 @@ public class KaleidoscopeInfo {
 		return resultMap;
 	}
 
-	public Boolean notifyServiceForbidden(String host, int port, String serviceName) {
+	public Boolean notifyReviewService(String host, int port, String serviceName,ServiceReviewState reviewState) {
 		
 		ManagerServiceCustomBody managerServiceCustomBody = new ManagerServiceCustomBody();
 		// 设置属性为==>审核
 		managerServiceCustomBody.setManagerServiceRequestType(ManagerServiceRequestType.REVIEW);
 		managerServiceCustomBody.setAddress(new Address(host, port));
 		managerServiceCustomBody.setSerivceName(serviceName);
-		managerServiceCustomBody.setServiceReviewState(ServiceReviewState.FORBIDDEN);
+		managerServiceCustomBody.setServiceReviewState(reviewState);
 		RemotingTransporter requestTransporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.MANAGER_SERVICE, managerServiceCustomBody);
 		
 		boolean successFlag = true;
@@ -322,6 +322,7 @@ public class KaleidoscopeInfo {
 			}
 		return null;
 	}
+	
 
 	public String getRegistryAddress() {
 		return registryAddress;

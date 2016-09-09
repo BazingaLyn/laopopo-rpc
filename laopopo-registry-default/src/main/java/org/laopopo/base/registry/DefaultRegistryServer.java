@@ -1,16 +1,21 @@
 package org.laopopo.base.registry;
 
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import org.laopopo.base.registry.model.RegistryPersistRecord;
 import org.laopopo.common.utils.NamedThreadFactory;
+import org.laopopo.common.utils.PersistUtils;
 import org.laopopo.registry.RegistryServer;
 import org.laopopo.remoting.netty.NettyRemotingServer;
 import org.laopopo.remoting.netty.NettyServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.alibaba.fastjson.JSON;
 
 /**
  * #######注册中心######
@@ -26,6 +31,7 @@ import org.slf4j.LoggerFactory;
  * 3)当服务下线需要通知对应的consumer变更后的注册信息
  * 4)所有的注册订阅信息的储存和健康检查
  * 5)接收管理者的一些信息请求，比如 服务统计 | 某个实例的服务降级 | 通知消费者的访问策略  | 改变某个服务实例的比重
+ * 6)将管理者对服务的一些信息 例如审核结果，负载算法等信息持久化到硬盘
  * @time 2016年8月15日
  * @modifytime
  */
@@ -35,6 +41,7 @@ public class DefaultRegistryServer implements RegistryServer {
 	
 	
     private final NettyServerConfig nettyServerConfig;       //netty Server的一些配置文件
+    private RegistryServerConfig registryServerConfig;       //注册中心的配置文件
 	private NettyRemotingServer remotingServer;  	         //注册中心的netty server端
 	private RegistryConsumerManager consumerManager;         //注册中心消费侧的管理逻辑控制类
 	private RegistryProviderManager providerManager;         //注册中心服务提供者的管理逻辑控制类
@@ -49,8 +56,9 @@ public class DefaultRegistryServer implements RegistryServer {
      * @param nettyServerConfig 注册中心的netty的配置文件 至少需要配置listenPort
      * @param nettyClientConfig 注册中心连接Monitor端的netty配置文件，至少需要配置defaultAddress值 这边monitor是单实例，所以address一个就好
      */
-    public DefaultRegistryServer(NettyServerConfig nettyServerConfig) {
+    public DefaultRegistryServer(NettyServerConfig nettyServerConfig,RegistryServerConfig registryServerConfig) {
     	this.nettyServerConfig = nettyServerConfig;
+    	this.registryServerConfig = registryServerConfig;
     	consumerManager = new RegistryConsumerManager(this);
     	providerManager = new RegistryProviderManager(this);
     	initialize();
@@ -69,6 +77,9 @@ public class DefaultRegistryServer implements RegistryServer {
 		 //注册处理器
 		 this.registerProcessor();
 		 
+		 //从硬盘上恢复一些服务的信息
+		 this.recoverServiceInfoFromDisk();
+		 
 		 this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
 				@Override
@@ -80,7 +91,42 @@ public class DefaultRegistryServer implements RegistryServer {
 						logger.warn("schedule publish failed [{}]",e.getMessage());
 					} 
 				}
-			}, 60, 60, TimeUnit.SECONDS);
+		}, 60, 60, TimeUnit.SECONDS);
+		 
+		 this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
+
+				@Override
+				public void run() {
+					// 延迟60秒，每隔一段时间将一些服务信息持久化到硬盘上
+					try {
+						DefaultRegistryServer.this.getProviderManager().persistServiceInfo();
+					} catch (Exception e) {
+						logger.warn("schedule persist failed [{}]",e.getMessage());
+					} 
+				}
+		}, 60, this.registryServerConfig.getPersistTime(), TimeUnit.SECONDS);
+	}
+
+	/**
+	 * 从硬盘上恢复一些服务的审核负载算法的信息
+	 */
+	private void recoverServiceInfoFromDisk() {
+		
+		String persistString = PersistUtils.file2String(this.registryServerConfig.getStorePathRootDir());
+		
+		if (null != persistString) {
+			List<RegistryPersistRecord> registryPersistRecords = JSON.parseArray(persistString.trim(), RegistryPersistRecord.class);
+			
+			if (null != registryPersistRecords) {
+				for (RegistryPersistRecord metricsReporter : registryPersistRecords) {
+					
+				     String serviceName = metricsReporter.getServiceName();
+				     this.getProviderManager().getHistoryRecords().put(serviceName, metricsReporter);
+				     
+				}
+			}
+		}
+		
 	}
 
 	private void registerProcessor() {
@@ -108,6 +154,14 @@ public class DefaultRegistryServer implements RegistryServer {
 
 	public void setRemotingServer(NettyRemotingServer remotingServer) {
 		this.remotingServer = remotingServer;
+	}
+
+	public RegistryServerConfig getRegistryServerConfig() {
+		return registryServerConfig;
+	}
+
+	public void setRegistryServerConfig(RegistryServerConfig registryServerConfig) {
+		this.registryServerConfig = registryServerConfig;
 	}
 
 }

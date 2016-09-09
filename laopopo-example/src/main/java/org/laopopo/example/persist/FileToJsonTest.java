@@ -5,12 +5,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.laopopo.common.rpc.MetricsReporter;
-import org.laopopo.common.rpc.RegisterMeta;
-import org.laopopo.common.rpc.RegisterMeta.Address;
 import org.laopopo.common.utils.PersistUtils;
 
 import com.alibaba.fastjson.JSON;
@@ -25,6 +21,7 @@ public class FileToJsonTest {
 		String persistString = PersistUtils.file2String(storePathRootDir);
 		
 		if(null != persistString){
+			@SuppressWarnings("unchecked")
 			List<MetricsReporter> metricsReporters = JSON.parseObject(persistString.trim(), List.class);
 			for(MetricsReporter metricsReporter : metricsReporters){
 				System.out.println(metricsReporter);

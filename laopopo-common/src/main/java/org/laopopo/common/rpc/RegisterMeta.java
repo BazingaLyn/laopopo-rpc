@@ -1,5 +1,10 @@
 package org.laopopo.common.rpc;
 
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+
+import io.netty.channel.Channel;
+
 import org.laopopo.common.transport.body.PublishServiceCustomBody;
 
 /**
@@ -28,7 +33,7 @@ public class RegisterMeta {
 	// 建议连接数 hashCode()与equals()不把connCount计算在内
 	private volatile int connCount;
 	
-	private ServiceReviewState isReviewed = ServiceReviewState.PASS_REVIEW;
+	private ServiceReviewState isReviewed = ServiceReviewState.HAS_NOT_REVIEWED;
 	
 	private boolean hasDegradeService = false;
 	
@@ -209,7 +214,14 @@ public class RegisterMeta {
 				+ ", connCount=" + connCount + ", isReviewed=" + isReviewed + ", hasDegradeService=" + hasDegradeService + "]";
 	}
 
-	public static RegisterMeta createRegiserMeta(PublishServiceCustomBody publishServiceCustomBody) {
+	public static RegisterMeta createRegiserMeta(PublishServiceCustomBody publishServiceCustomBody, Channel channel) {
+		
+		if(publishServiceCustomBody.getHost() == null ||publishServiceCustomBody.getHost().length() == 0){
+			SocketAddress address = channel.remoteAddress();
+			if (address instanceof InetSocketAddress) {
+				publishServiceCustomBody.setHost(((InetSocketAddress) address).getAddress().getHostAddress());
+            }
+		}
 
 		Address address = new Address(publishServiceCustomBody.getHost(), 
 									  publishServiceCustomBody.getPort());
