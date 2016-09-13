@@ -28,6 +28,7 @@
 		<spring-framework.version>4.3.0.RELEASE</spring-framework.version>
 		<metrics.version>3.1.2</metrics.version>
 		<fastjson.version>1.2.3</fastjson.version>
+		<kryo.version>2.21</kryo.version>
 	</properties>
 
 	<dependencyManagement>
@@ -106,6 +107,11 @@
 				<groupId>org.objenesis</groupId>
 				<artifactId>objenesis</artifactId>
 				<version>${objenesis.version}</version>
+			</dependency>
+			<dependency>
+			    <groupId>com.esotericsoftware.kryo</groupId>
+			    <artifactId>kryo</artifactId>
+			    <version>${kryo.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>net.bytebuddy</groupId>

@@ -85,6 +85,7 @@ $(function() {
 									formatter : function(value, row, index) {
 										var btnStr = "&nbsp;&nbsp;&nbsp;&nbsp;<button onclick=suitBookingCitys() class='btn btn-success btn-xs'><i class='fa fa-edit'></i><span >刷新</span></button>";
 										btnStr += "&nbsp;&nbsp;&nbsp;&nbsp;<button onclick=editRegional()  class='btn btn-warning btn-xs'><i class='fa fa-eye'></i><span>负载策略</span></button>";
+										btnStr += "&nbsp;&nbsp;&nbsp;&nbsp;<button onclick=openModel()  class='btn btn-warning btn-xs'><i class='fa fa-eye'></i><span>弹出</span></button>";
 										return btnStr;
 									}
 								} ],
@@ -242,4 +243,10 @@ function getParams(params) {
 		offset : params.offset,
 		search : searchKey
 	};
+}
+
+function openModel(){
+	$("#commonModal").load("model.html",function(){
+		$(this).modal('show');
+	});
 }

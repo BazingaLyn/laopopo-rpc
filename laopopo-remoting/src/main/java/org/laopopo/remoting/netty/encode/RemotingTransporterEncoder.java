@@ -12,8 +12,8 @@ import static org.laopopo.common.serialization.SerializerHolder.serializerImpl;
 /**
  * 
  * @author BazingaLyn
- * @description
- * @time
+ * @description Netty 对{@link RemotingTransporter}的编码器
+ * @time 2016年8月10日
  * @modifytime
  */
 @ChannelHandler.Sharable
@@ -27,11 +27,11 @@ public class RemotingTransporterEncoder extends MessageToByteEncoder<RemotingTra
 	private void doEncodeRemotingTransporter(RemotingTransporter msg, ByteBuf out) {
 		byte[] body = serializerImpl().writeObject(msg.getCustomHeader());
 		
-		out.writeShort(MAGIC).
-		writeByte(msg.getTransporterType())// 传输类型 sign
-		.writeByte(msg.getCode()) // 请求类型requestcode
-		.writeLong(msg.getOpaque()) //requestId
-		.writeInt(body.length) //length
+		out.writeShort(MAGIC). 	           //协议头
+		writeByte(msg.getTransporterType())// 传输类型 sign 是请求还是响应
+		.writeByte(msg.getCode())          // 请求类型requestcode 表明主题信息的类型，也代表请求的类型
+		.writeLong(msg.getOpaque())        //requestId
+		.writeInt(body.length)             //length
 		.writeBytes(body);
 	}
 

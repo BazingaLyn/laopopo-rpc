@@ -13,6 +13,13 @@ import org.laopopo.remoting.model.RemotingTransporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description Netty 对{@link RemotingTransporter}的解码器
+ * @time 2016年8月10日
+ * @modifytime
+ */
 public class RemotingTransporterDecoder extends ReplayingDecoder<RemotingTransporterDecoder.State> {
 	
 	private static final Logger logger = LoggerFactory.getLogger(RemotingTransporterDecoder.class);
@@ -22,6 +29,7 @@ public class RemotingTransporterDecoder extends ReplayingDecoder<RemotingTranspo
 	private final LaopopoProtocol header = new LaopopoProtocol();
 
 	public RemotingTransporterDecoder() {
+		//设置(下文#state()的默认返回对象)
 		super(State.HEADER_MAGIC);
 	}
 

@@ -24,8 +24,8 @@ public class NettyServerTest {
 			
 			@Override
 			public RemotingTransporter processRequest(ChannelHandlerContext ctx, RemotingTransporter transporter) throws Exception {
-				System.out.println(transporter);
 				transporter.setCustomHeader(serializerImpl().readObject(transporter.bytes(), TestCommonCustomBody.class));
+				System.out.println(transporter);
 				transporter.setTransporterType(LaopopoProtocol.RESPONSE_REMOTING);
 				return transporter;
 			}

@@ -13,34 +13,42 @@
 	<url>http://maven.apache.org</url>
 
 	<dependencies>
-			<dependency>
-				<groupId>io.protostuff</groupId>
-				<artifactId>protostuff-core</artifactId>
-			</dependency>
-			<dependency>
-				<groupId>io.protostuff</groupId>
-				<artifactId>protostuff-runtime</artifactId>
-			</dependency>
-			<dependency>
-				<groupId>org.objenesis</groupId>
-				<artifactId>objenesis</artifactId>
-			</dependency>
-			<dependency>
-				<groupId>io.netty</groupId>
-				<artifactId>netty-all</artifactId>
-			</dependency>
-			<dependency>
-				<groupId>org.slf4j</groupId>
-				<artifactId>slf4j-api</artifactId>
-			</dependency>
-			<dependency>
-				<groupId>cglib</groupId>
-				<artifactId>cglib</artifactId>
-			</dependency>
-			<dependency>
-				<groupId>net.bytebuddy</groupId>
-				<artifactId>byte-buddy</artifactId>
-			</dependency>
+		<dependency>
+			<groupId>io.protostuff</groupId>
+			<artifactId>protostuff-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.protostuff</groupId>
+			<artifactId>protostuff-runtime</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.objenesis</groupId>
+			<artifactId>objenesis</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-all</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>cglib</groupId>
+			<artifactId>cglib</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>net.bytebuddy</groupId>
+			<artifactId>byte-buddy</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.alibaba</groupId>
+			<artifactId>fastjson</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.esotericsoftware.kryo</groupId>
+			<artifactId>kryo</artifactId>
+		</dependency>
 	</dependencies>
 
 </project>
