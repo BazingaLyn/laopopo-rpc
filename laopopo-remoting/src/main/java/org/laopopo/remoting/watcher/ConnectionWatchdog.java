@@ -19,14 +19,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 监控重连狗
+ * 
  * @author BazingaLyn
- *
+ * @description 监控重连狗
  * @time
+ * @modifytime
  */
 @ChannelHandler.Sharable
 public abstract class ConnectionWatchdog extends ChannelInboundHandlerAdapter implements TimerTask, ChannelHandlerHolder {
-
+	
 	private static final Logger logger = LoggerFactory.getLogger(ConnectionWatchdog.class);
 
 	private final Bootstrap bootstrap;

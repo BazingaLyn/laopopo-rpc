@@ -1,6 +1,7 @@
 package org.laopopo.client.consumer.proxy;
 
 import static org.laopopo.common.serialization.SerializerHolder.serializerImpl;
+import io.netty.channel.Channel;
 
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -17,6 +18,8 @@ import org.laopopo.common.transport.body.RequestCustomBody;
 import org.laopopo.common.transport.body.ResponseCustomBody;
 import org.laopopo.common.utils.ChannelGroup;
 import org.laopopo.remoting.model.RemotingTransporter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 
@@ -26,6 +29,8 @@ import org.laopopo.remoting.model.RemotingTransporter;
  * @modifytime
  */
 public class SynInvoker {
+	
+	private static final Logger logger = LoggerFactory.getLogger(SynInvoker.class);
 
 	private Consumer consumer;
 	
@@ -49,7 +54,13 @@ public class SynInvoker {
 		
 		ChannelGroup channelGroup = consumer.loadBalance(serviceName);
 		if (channelGroup == null || channelGroup.size() == 0) {
-			throw new NoServiceException("没有第三方提供该服务，请检查服务名");
+			if(channelGroup.getAddress() != null){
+				logger.warn("direct connect provider");
+				Channel channel = consumer.directGetProviderByChannel(channelGroup.getAddress());
+				channelGroup.add(channel);
+			}else{
+				throw new NoServiceException("没有第三方提供该服务，请检查服务名");
+			}
 		}
 
 		RequestCustomBody body = new RequestCustomBody();

@@ -23,7 +23,6 @@ public class KryoSerializer implements Serializer {
 
 	@Override
 	public <T> byte[] writeObject(T obj) {
-		System.out.println("KryoSerializer serializer");
 		Kryo kryo = new Kryo();
 		kryo.setReferences(false);
 		kryo.register(obj.getClass(), new JavaSerializer());
@@ -47,7 +46,6 @@ public class KryoSerializer implements Serializer {
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> T readObject(byte[] bytes, Class<T> clazz) {
-		System.out.println("KryoSerializer deserializer");
 		Kryo kryo = new Kryo();
 		kryo.setReferences(false);
 		kryo.register(clazz, new JavaSerializer());

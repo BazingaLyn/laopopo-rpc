@@ -109,6 +109,15 @@ public interface Consumer {
 	 */
 	void setServiceLoadBalanceStrategy(String serviceName,LoadBalanceStrategy loadBalanceStrategy);
 	
+	
+	/**
+	 * 如果直连的情况下，根据address直接获取连接
+	 * @param address
+	 * @return
+	 * @throws InterruptedException 
+	 */
+	Channel directGetProviderByChannel(UnresolvedAddress address) throws InterruptedException;
+	
 	/**
 	 * 启动consumer端实例
 	 */

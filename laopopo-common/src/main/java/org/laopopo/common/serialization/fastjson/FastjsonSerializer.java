@@ -18,13 +18,11 @@ public class FastjsonSerializer implements Serializer {
 
 	@Override
 	public <T> byte[] writeObject(T obj) {
-		System.out.println("FastjsonSerializer Serializer");
 		return JSON.toJSONBytes(obj, SerializerFeature.SortField);
 	}
 
 	@Override
 	public <T> T readObject(byte[] bytes, Class<T> clazz) {
-		System.out.println("FastjsonSerializer Deserializer");
 		return JSON.parseObject(bytes, clazz, Feature.SortFeidFastMatch);
 	}
 

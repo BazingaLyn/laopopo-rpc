@@ -70,6 +70,7 @@ public class LocalServerWrapperManager {
 					for(ServiceWrapper serviceWrapper : serviceWrappers){
 						
 						PublishServiceCustomBody commonCustomHeader = new PublishServiceCustomBody();
+						
 						commonCustomHeader.setConnCount(serviceWrapper.getConnCount());
 						commonCustomHeader.setDegradeServiceDesc(serviceWrapper.getDegradeServiceDesc());
 						commonCustomHeader.setDegradeServicePath(serviceWrapper.getDegradeServicePath());
@@ -78,6 +79,7 @@ public class LocalServerWrapperManager {
 						commonCustomHeader.setVIPService(serviceWrapper.isVIPService());
 						commonCustomHeader.setWeight(serviceWrapper.getWeight());
 						commonCustomHeader.setSupportDegradeService(serviceWrapper.isSupportDegradeService());
+						commonCustomHeader.setMaxCallCountInMinute(serviceWrapper.getMaxCallCountInMinute());
 						
 						RemotingTransporter remotingTransporter =  RemotingTransporter.createRequestTransporter(LaopopoProtocol.PUBLISH_SERVICE, commonCustomHeader);
 						remotingTransporters.add(remotingTransporter);
@@ -204,7 +206,8 @@ public class LocalServerWrapperManager {
 																			   degradeServiceDesc,
 																			   weight,
 																			   connCount,
-																			   isVIPService);
+																			   isVIPService,
+																			   maxCallCount);
 							//放入到一个缓存中，方便以后consumer来调取服务的时候，该来获取对应真正的编织类
 							providerController.getProviderContainer().registerService(serviceName, serviceWrapper);
 							

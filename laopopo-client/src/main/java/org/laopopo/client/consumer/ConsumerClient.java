@@ -16,12 +16,30 @@ import org.laopopo.common.utils.ChannelGroup;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.laopopo.remoting.netty.NettyClientConfig;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description 消费端的代码
+ * @time 2016年8月18日
+ * @modifytime 2016年9月14日 修改部分的代码，增加代码的健壮性
+ */
 public class ConsumerClient extends DefaultConsumer {
 
 
 	public static final long DEFAULT_TIMEOUT = 3 * 1000l;
-	
 
+	public ConsumerClient() {
+		this(null, new NettyClientConfig(), new ConsumerConfig());
+	}
+	
+	public ConsumerClient(ConsumerConfig consumerConfig) {
+		this(null, new NettyClientConfig(), consumerConfig);
+	}
+	
+	public ConsumerClient(NettyClientConfig providerClientConfig, ConsumerConfig consumerConfig) {
+		this(null, providerClientConfig, consumerConfig);
+	}
+	
 	public ConsumerClient(NettyClientConfig registryClientConfig, NettyClientConfig providerClientConfig, ConsumerConfig consumerConfig) {
 		super(registryClientConfig, providerClientConfig, consumerConfig);
 	}
@@ -40,8 +58,6 @@ public class ConsumerClient extends DefaultConsumer {
 		}
 		ChannelGroup channelGroup = getAllMatchedChannel(serviceName);
 		if (channelGroup == null || channelGroup.size() == 0) {
-			System.out.println(channelGroup);
-			System.out.println(channelGroup.size());
 			throw new NoServiceException("没有第三方提供该服务，请检查服务名");
 		}
 

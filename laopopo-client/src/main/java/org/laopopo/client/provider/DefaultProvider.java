@@ -41,18 +41,16 @@ public class DefaultProvider implements Provider {
 
 	private static final Logger logger = LoggerFactory.getLogger(DefaultProvider.class);
 
-	private NettyClientConfig clientConfig; // 向注册中心连接的netty client配置
-	private NettyServerConfig serverConfig; // 等待服务提供者连接的netty server的配置
-	private NettyRemotingClient nettyRemotingClient; // 连接monitor和注册中心
-	private NettyRemotingServer nettyRemotingServer; // 等待被Consumer连接
-	private NettyRemotingServer nettyRemotingVipServer; // 等待被Consumer VIP连接
-	private ProviderRegistryController providerController; // provider端向注册中心连接的业务逻辑的控制器
-	private ProviderRPCController providerRPCController; // consumer端远程调用的核心控制器
-	private ExecutorService remotingExecutor; // RPC调用的核心线程执行器
-	private ExecutorService remotingVipExecutor; // RPC调用的核心线程执行器
-	// 定时检查 TODO
-	private Channel monitorChannel; // 连接monitor端的channel
-
+	private NettyClientConfig clientConfig;               // 向注册中心连接的netty client配置
+	private NettyServerConfig serverConfig; 			  // 等待服务提供者连接的netty server的配置
+	private NettyRemotingClient nettyRemotingClient; 	  // 连接monitor和注册中心
+	private NettyRemotingServer nettyRemotingServer;      // 等待被Consumer连接
+	private NettyRemotingServer nettyRemotingVipServer;   // 等待被Consumer VIP连接
+	private ProviderRegistryController providerController;// provider端向注册中心连接的业务逻辑的控制器
+	private ProviderRPCController providerRPCController;  // consumer端远程调用的核心控制器
+	private ExecutorService remotingExecutor;             // RPC调用的核心线程执行器
+	private ExecutorService remotingVipExecutor; 		  // RPC调用VIP的核心线程执行器
+	private Channel monitorChannel; 					  // 连接monitor端的channel
 	/********* 要发布的服务的信息 ***********/
 	private List<RemotingTransporter> publishRemotingTransporters;
 	/************ 全局发布的信息 ************/
@@ -73,6 +71,15 @@ public class DefaultProvider implements Provider {
 	// 定时任务执行器
 	private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("provider-timer"));
 
+	
+	public DefaultProvider() {
+		this.clientConfig = new NettyClientConfig();
+		this.serverConfig = new NettyServerConfig();
+		providerController = new ProviderRegistryController(this);
+		providerRPCController = new ProviderRPCController(this);
+		initialize();
+	}
+	
 	public DefaultProvider(NettyClientConfig clientConfig, NettyServerConfig serverConfig) {
 		this.clientConfig = clientConfig;
 		this.serverConfig = serverConfig;
@@ -216,17 +223,27 @@ public class DefaultProvider implements Provider {
 		initGlobalService();
 
 		nettyRemotingClient.start();
-		// 发布任务
-		this.publishedAndStartProvider();
-		logger.info("provider start successfully");
+		
+		try {
+			// 发布任务
+			this.publishedAndStartProvider();
+			logger.info("provider start successfully");
+		} catch (Exception e) {
+			logger.error("publish service to registry failed [{}]",e.getMessage());
+		}
 
 		int _port = this.exposePort;
-		this.serverConfig.setListenPort(exposePort);
-		this.nettyRemotingServer.start();
+		
+		if(_port != 0){
+			
+			this.serverConfig.setListenPort(exposePort);
+			this.nettyRemotingServer.start();
 
-		int vipPort = _port - 2;
-		this.serverConfig.setListenPort(vipPort);
-		this.nettyRemotingVipServer.start();
+			int vipPort = _port - 2;
+			this.serverConfig.setListenPort(vipPort);
+			this.nettyRemotingVipServer.start();
+		}
+		
 
 		if (monitorAddress != null) {
 			initMonitorChannel();

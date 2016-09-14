@@ -6,9 +6,22 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description 持久化工具
+ * @time 2016年9月1日
+ * @modifytime
+ */
 public class PersistUtils {
 	
 	
+	/**
+	 * 将json数据存到某个文件中
+	 * @param str
+	 * @param fileName
+	 * @throws IOException
+	 */
 	public static final void string2File(final String str, final String fileName) throws IOException {
         String tmpFile = fileName + ".tmp";
         string2FileNotSafe(str, tmpFile);

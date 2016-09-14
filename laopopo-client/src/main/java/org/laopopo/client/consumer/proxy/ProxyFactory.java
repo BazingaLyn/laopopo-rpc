@@ -97,6 +97,7 @@ public class ProxyFactory<T> {
 			if(addresses != null && addresses.size() > 0){
 				for (UnresolvedAddress address : addresses) {
 		            consumer.addChannelGroup(serviceName, consumer.group(address));
+		            
 		        }
 			}
 		}

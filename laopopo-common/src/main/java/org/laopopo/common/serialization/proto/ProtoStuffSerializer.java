@@ -29,7 +29,6 @@ public class ProtoStuffSerializer implements Serializer {
 	@SuppressWarnings("unchecked")
 	public <T> byte[] writeObject(T obj) {
 		
-		System.out.println("ProtoStuffSerializer Serializer");
 		Class<T> cls = (Class<T>) obj.getClass();
         LinkedBuffer buffer = LinkedBuffer.allocate(LinkedBuffer.DEFAULT_BUFFER_SIZE);
         try {
@@ -44,7 +43,6 @@ public class ProtoStuffSerializer implements Serializer {
 
 	public <T> T readObject(byte[] bytes, Class<T> clazz) {
 		try {
-			System.out.println("ProtoStuffSerializer Deserializer");
             T message = objenesis.newInstance(clazz);
             Schema<T> schema = getSchema(clazz);
             ProtostuffIOUtil.mergeFrom(bytes, message, schema);

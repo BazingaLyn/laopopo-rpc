@@ -166,7 +166,7 @@ public class NettyRemotingClient extends NettyRemotingBase implements RemotingCl
 		}
 	}
 
-	private Channel getAndCreateChannel(final String addr) throws InterruptedException {
+	public Channel getAndCreateChannel(final String addr) throws InterruptedException {
 
 		if (null == addr) {
 			logger.warn("address is null");

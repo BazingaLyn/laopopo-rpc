@@ -60,11 +60,17 @@ public abstract class DefaultConsumer extends AbstractDefaultConsumer {
 	}
 
 	private void initialize() {
-		this.registryNettyRemotingClient = new NettyRemotingClient(this.registryClientConfig);
+		
+		//因为服务消费端可以直连provider，所以当传递过来的与注册中心连接的配置文件为空的时候，可以不初始化registryNettyRemotingClient
+		if(null != this.registryClientConfig){
+			this.registryNettyRemotingClient = new NettyRemotingClient(this.registryClientConfig);
+			// 注册处理器
+			this.registerProcessor();
+		}
+		
 		this.providerNettyRemotingClient = new NettyRemotingClient(this.providerClientConfig);
 
-		// 注册处理器
-		this.registerProcessor();
+		
 
 	}
 
@@ -208,15 +214,26 @@ public abstract class DefaultConsumer extends AbstractDefaultConsumer {
 	public boolean removeChannelGroup(String serviceName, ChannelGroup group) {
 		return DefaultConsumer.super.removedIfAbsent(serviceName, group);
 	}
+	
+	@Override
+	public Channel directGetProviderByChannel(UnresolvedAddress address) throws InterruptedException {
+		return this.providerNettyRemotingClient.getAndCreateChannel(address.getHost()+":"+address.getPort());
+	}
 
  
 
 	@Override
 	public void start() {
-		this.registryNettyRemotingClient.start();
+		//如果连接注册中心的client初始化成功的情况下，且连接注册中心的地址不为空的时候去尝试连接注册中心
+		if(null != this.registryClientConfig && null != this.registryNettyRemotingClient){
+			this.registryNettyRemotingClient.start();
+			//获取到与注册中心集群的一个健康的的Netty 长连接的channel
+			getOrUpdateHealthyChannel();
+		}
+		
 		this.providerNettyRemotingClient.setreconnect(false);
 		this.providerNettyRemotingClient.start();
-		getOrUpdateHealthyChannel();
+		
 	}
 
 	@Override
