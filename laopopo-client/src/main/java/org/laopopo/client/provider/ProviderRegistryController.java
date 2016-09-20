@@ -74,7 +74,5 @@ public class ProviderRegistryController {
 	public void setServiceFlowControllerManager(ServiceFlowControllerManager serviceFlowControllerManager) {
 		this.serviceFlowControllerManager = serviceFlowControllerManager;
 	}
-	
-	
 
 }

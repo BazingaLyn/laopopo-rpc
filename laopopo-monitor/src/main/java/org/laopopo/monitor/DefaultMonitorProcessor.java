@@ -7,7 +7,6 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.internal.ConcurrentSet;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -98,19 +97,24 @@ public class DefaultMonitorProcessor implements NettyRequestProcessor {
 		
 		if(null != maps){
 			
-			int totalCallCount = 0;
-			int totalFailCount = 0;
-			Double totalTime = 0d;
+			Long totalCallCount = 0l;
+			Long totalFailCount = 0l;
+			Long totalTime = 0l;
+			Long totalRequestSize = 0l;
+			
 			for(Address address : maps.keySet()){
 				
 				MetricsReporter metricsReporter = maps.get(address);            
 				Long callCount = metricsReporter.getCallCount();
 				Long failCount = metricsReporter.getFailCount();
-				Double handlerAvgTime = metricsReporter.getHandlerAvgTime();
+				Long requestSize = metricsReporter.getRequestSize();
+				Long handlerTime = metricsReporter.getTotalReuqestTime();
 				
 				totalCallCount += callCount;
 				totalFailCount += failCount;
-				totalTime += handlerAvgTime * callCount;
+				totalRequestSize += requestSize;
+				totalTime += handlerTime;
+				
 				ConcurrentMap<Address, ProviderInfo> providerConcurrentMap = metrics.getProviderMaps();
 				
 				ProviderInfo info = providerConcurrentMap.get(address);
@@ -121,16 +125,27 @@ public class DefaultMonitorProcessor implements NettyRequestProcessor {
 					providerConcurrentMap.put(address, info);
 				}
 				
-				info.setHandlerAvgTime((info.getCallCount() + callCount == 0 ? 0d :new BigDecimal((metrics.getHandlerAvgTime() * metrics.getTotalCallCount() + handlerAvgTime * callCount) / (info.getCallCount() + callCount)).setScale(2,BigDecimal.ROUND_HALF_UP).doubleValue()));
+				Long eachHandlerAvgTime = 0l;
+
+				if((info.getCallCount() + metricsReporter.getCallCount())!=0){
+					
+					eachHandlerAvgTime = ((info.getCallCount() - info.getFailCount()) * info.getHandlerAvgTime() + metricsReporter.getTotalReuqestTime()) / (info.getCallCount() - info.getFailCount() + metricsReporter.getCallCount() - metricsReporter.getFailCount());
+					
+				}
+				
+				info.setHandlerAvgTime(eachHandlerAvgTime);
 				info.setCallCount(info.getCallCount() + callCount);
 				info.setFailCount(info.getFailCount() + failCount);
+				info.setRequestSize(info.getRequestSize() + requestSize);
 				
 				
 			}
 			metrics.setTotalCallCount(metrics.getTotalCallCount() + totalCallCount);
 			metrics.setTotalFailCount(metrics.getTotalFailCount() + totalFailCount);
-			Double existTotalTime = metrics.getTotalCallCount() * metrics.getHandlerAvgTime();
-			metrics.setHandlerAvgTime(new BigDecimal((existTotalTime + totalTime) / metrics.getTotalCallCount()).setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue());
+			Long existTotalTime = (metrics.getTotalCallCount() - metrics.getTotalFailCount()) * metrics.getHandlerAvgTime();
+			
+			metrics.setHandlerAvgTime((existTotalTime+totalTime) / (metrics.getTotalCallCount() - metrics.getTotalFailCount()));
+			metrics.setRequestSize(metrics.getRequestSize() + totalRequestSize);
 		}
 		
 	}
@@ -153,7 +168,12 @@ public class DefaultMonitorProcessor implements NettyRequestProcessor {
 			
 			for(MetricsReporter metricsReporter : body.getMetricsReporter()){
 				
-				Address address = new Address(metricsReporter.getHost(), metricsReporter.getPort());
+				
+				String host = ConnectionUtils.parseChannelRemoteAddress(channel).getHost();
+				
+				Address address = new Address(host, metricsReporter.getPort());
+				
+				metricsReporter.setHost(host);
 				
 				ConcurrentSet<Address> addresses = defaultMonitor.getGlobalProviderReporter().get(channel);
 				if(addresses == null){

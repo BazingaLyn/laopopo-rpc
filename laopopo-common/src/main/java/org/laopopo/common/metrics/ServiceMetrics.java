@@ -21,7 +21,8 @@ public class ServiceMetrics {
 	private String serviceName;                      							  	  //服务名
 	private Long totalCallCount = 0l;                     							  //该服务的总共的统计次数
 	private Long totalFailCount = 0l;                    							  //该服务的总共的失败次数
-	private Double handlerAvgTime = 0d;
+	private Long handlerAvgTime = 0l;
+	private Long requestSize = 0l;
 	private ConcurrentMap<Address,ProviderInfo> providerMaps = 
 			new ConcurrentHashMap<Address, ProviderInfo>();     	                  //该服务的消费者的信息
 	private Set<ConsumerInfo> consumerInfos = new HashSet<ConsumerInfo>();        	  //该服务的提供者的信息
@@ -74,14 +75,24 @@ public class ServiceMetrics {
 	public void setLoadBalanceStrategy(LoadBalanceStrategy loadBalanceStrategy) {
 		this.loadBalanceStrategy = loadBalanceStrategy;
 	}
-	
-	public Double getHandlerAvgTime() {
+
+	public Long getHandlerAvgTime() {
 		return handlerAvgTime;
 	}
 
-	public void setHandlerAvgTime(Double handlerAvgTime) {
+	public void setHandlerAvgTime(Long handlerAvgTime) {
 		this.handlerAvgTime = handlerAvgTime;
 	}
+
+	public Long getRequestSize() {
+		return requestSize;
+	}
+
+	public void setRequestSize(Long requestSize) {
+		this.requestSize = requestSize;
+	}
+
+
 
 	public static class ConsumerInfo {
 		
@@ -120,7 +131,8 @@ public class ServiceMetrics {
 		private String host; 			        //host
 		private Long callCount = 0l;            //调用的次数
 		private Long failCount = 0l;            //失败的次数
-		private Double handlerAvgTime = 0d;     //处理的平均时间
+		private Long handlerAvgTime = 0l;       //处理的平均时间
+		private Long requestSize = 0l;          //请求的大小
 		private Boolean isDegradeService;       //是否已经降级
 		private Boolean isSupportDegrade;       //是否支持降级
 		private Boolean isVipService;           //是否是VIP服务
@@ -150,11 +162,17 @@ public class ServiceMetrics {
 		public void setFailCount(Long failCount) {
 			this.failCount = failCount;
 		}
-		public Double getHandlerAvgTime() {
+		public Long getHandlerAvgTime() {
 			return handlerAvgTime;
 		}
-		public void setHandlerAvgTime(Double handlerAvgTime) {
+		public void setHandlerAvgTime(Long handlerAvgTime) {
 			this.handlerAvgTime = handlerAvgTime;
+		}
+		public Long getRequestSize() {
+			return requestSize;
+		}
+		public void setRequestSize(Long requestSize) {
+			this.requestSize = requestSize;
 		}
 		public Boolean getIsDegradeService() {
 			return isDegradeService;
@@ -192,7 +210,8 @@ public class ServiceMetrics {
 	@Override
 	public String toString() {
 		return "ServiceMetrics [serviceName=" + serviceName + ", totalCallCount=" + totalCallCount + ", totalFailCount=" + totalFailCount + ", handlerAvgTime="
-				+ handlerAvgTime + ", providerMaps=" + providerMaps + ", consumerInfos=" + consumerInfos + ", loadBalanceStrategy=" + loadBalanceStrategy + "]";
+				+ handlerAvgTime + ", requestSize=" + requestSize + ", providerMaps=" + providerMaps + ", consumerInfos=" + consumerInfos
+				+ ", loadBalanceStrategy=" + loadBalanceStrategy + "]";
 	}
 
 }

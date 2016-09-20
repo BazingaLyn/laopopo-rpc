@@ -22,7 +22,8 @@ public class MetricsReporter implements Serializable {
 	private String serviceName;              //统计的服务名
 	private Long callCount = 0l;             //调用的次数
 	private Long failCount = 0l;             //失败的次数
-	private Double handlerAvgTime = 0d;      //处理的平均时间
+	private Long requestSize = 0l;           //请求的大小
+	private Long totalReuqestTime = 0l;      //总请求的时间
 	
 	
 	public String getServiceName() {
@@ -43,12 +44,6 @@ public class MetricsReporter implements Serializable {
 	public void setFailCount(Long failCount) {
 		this.failCount = failCount;
 	}
-	public Double getHandlerAvgTime() {
-		return handlerAvgTime;
-	}
-	public void setHandlerAvgTime(Double handlerAvgTime) {
-		this.handlerAvgTime = handlerAvgTime;
-	}
 	public String getHost() {
 		return host;
 	}
@@ -61,10 +56,22 @@ public class MetricsReporter implements Serializable {
 	public void setPort(int port) {
 		this.port = port;
 	}
+	public Long getRequestSize() {
+		return requestSize;
+	}
+	public void setRequestSize(Long requestSize) {
+		this.requestSize = requestSize;
+	}
+	public Long getTotalReuqestTime() {
+		return totalReuqestTime;
+	}
+	public void setTotalReuqestTime(Long totalReuqestTime) {
+		this.totalReuqestTime = totalReuqestTime;
+	}
 	@Override
 	public String toString() {
 		return "MetricsReporter [host=" + host + ", port=" + port + ", serviceName=" + serviceName + ", callCount=" + callCount + ", failCount=" + failCount
-				+ ", handlerAvgTime=" + handlerAvgTime + "]";
+				+ ", requestSize=" + requestSize + ", totalReuqestTime=" + totalReuqestTime + "]";
 	}
 	
 }

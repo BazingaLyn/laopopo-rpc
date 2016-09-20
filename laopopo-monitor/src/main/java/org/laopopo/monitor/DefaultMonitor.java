@@ -61,7 +61,7 @@ public class DefaultMonitor implements MonitorNode {
 	private ConcurrentMap<String, ConcurrentMap<Address, MetricsReporter>> globalMetricsReporter = new ConcurrentHashMap<String, ConcurrentMap<Address, MetricsReporter>>();
 	// 历史统计的信息
 	private ConcurrentMap<String, ConcurrentMap<Address, MetricsReporter>> historyGlobalMetricsReporter = new ConcurrentHashMap<String, ConcurrentMap<Address, MetricsReporter>>();
-	// 每个与monitor连接的服务提供者的实例它提供服务的监听端口
+	// key为服务提供者实例与监控中心之间的channel，val是一个集合，因为有VIP的服务的原因，可能一个实例有2个端口，服务提供者的实例 它提供服务的监听端口
 	private ConcurrentMap<Channel, ConcurrentSet<Address>> globalProviderReporter = new ConcurrentHashMap<Channel, ConcurrentSet<Address>>();
 	// //定时任务
 	private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("monitor-timer"));

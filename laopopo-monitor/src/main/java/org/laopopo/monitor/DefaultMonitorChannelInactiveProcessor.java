@@ -52,7 +52,7 @@ public class DefaultMonitorChannelInactiveProcessor implements NettyChannelInact
 					
 					MetricsReporter metricsReporter = eachMap.get(address);
 					
-					if(null != metricsReporter){ //将器更新到history map中去
+					if(null != metricsReporter){ //将其更新到history map中去
 						
 						ConcurrentMap<Address, MetricsReporter>  historyMetrics = defaultMonitor.getHistoryGlobalMetricsReporter().get(metricsReporter.getServiceName());
 						
@@ -71,7 +71,7 @@ public class DefaultMonitorChannelInactiveProcessor implements NettyChannelInact
 							}else{
 								historyMetricsReporter.setCallCount(historyMetricsReporter.getCallCount() + metricsReporter.getCallCount());
 								historyMetricsReporter.setFailCount(historyMetricsReporter.getFailCount() + metricsReporter.getFailCount());
-								historyMetricsReporter.setHandlerAvgTime(historyMetricsReporter.getHandlerAvgTime() + metricsReporter.getHandlerAvgTime());
+								historyMetricsReporter.setTotalReuqestTime(historyMetricsReporter.getTotalReuqestTime() + metricsReporter.getTotalReuqestTime());
 							}
 						}
 						
@@ -85,13 +85,11 @@ public class DefaultMonitorChannelInactiveProcessor implements NettyChannelInact
 						}
 						metricsReporter.setCallCount(0l);
 						metricsReporter.setFailCount(0l);
-						metricsReporter.setHandlerAvgTime(0d);
+						metricsReporter.setTotalReuqestTime(0l);
 					}
-					 
 				}
 			}
 		}
-
 	}
 
 }

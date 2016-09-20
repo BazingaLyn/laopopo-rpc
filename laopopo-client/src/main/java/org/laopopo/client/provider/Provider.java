@@ -63,7 +63,7 @@ public interface Provider {
 	Provider monitorAddress(String monitorAddress);
 	
 	/**
-	 * 需要暴露的接口
+	 * 需要暴露的实例
 	 * @param obj
 	 */
 	Provider publishService(Object ...obj);

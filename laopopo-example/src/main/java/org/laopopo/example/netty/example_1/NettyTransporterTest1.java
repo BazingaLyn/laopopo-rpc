@@ -17,9 +17,11 @@ public class NettyTransporterTest1 {
 		
 		StudentInfos infos = new StudentInfos();
 		//学生信息
+		@SuppressWarnings("unused")
 		RemotingTransporter studentsRemotingTransporter = RemotingTransporter.createRequestTransporter(STUDENTS, infos);
 		//学生信息
 		TeacherInfo info = new TeacherInfo();
+		@SuppressWarnings("unused")
 		RemotingTransporter teacherRemotingTransporter = RemotingTransporter.createRequestTransporter(TEACHER, info);
 	}
 

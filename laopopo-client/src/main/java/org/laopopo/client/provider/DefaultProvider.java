@@ -11,7 +11,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import org.laopopo.client.metrics.Metrics;
 import org.laopopo.client.provider.DefaultServiceProviderContainer.CurrentServiceState;
 import org.laopopo.client.provider.model.DefaultProviderInactiveProcessor;
 import org.laopopo.client.provider.model.ServiceWrapper;
@@ -67,7 +66,7 @@ public class DefaultProvider implements Provider {
 	// 当前provider端状态是否健康，也就是说如果注册宕机后，该provider端的实例信息是失效，这是需要重新发送注册信息,因为默认状态下start就是发送，只有channel
 	// inactive的时候说明短线了，需要重新发布信息
 	private boolean ProviderStateIsHealthy = true;
-
+	
 	// 定时任务执行器
 	private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("provider-timer"));
 
@@ -128,14 +127,14 @@ public class DefaultProvider implements Provider {
 			}
 		}, 1, 1, TimeUnit.MINUTES);
 
-		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
-
-			@Override
-			public void run() {
-				logger.info("ready prepare send Report");
-				Metrics.scheduledSendReport();
-			}
-		}, 3, 60, TimeUnit.SECONDS);
+//		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
+//
+//			@Override
+//			public void run() {
+//				logger.info("ready prepare send Report");
+//				ServiceMeterManager.scheduledSendReport();
+//			}
+//		}, 3, 60, TimeUnit.SECONDS);
 
 		// 如果监控中心的地址不是null，则需要定时发送统计信息
 		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {

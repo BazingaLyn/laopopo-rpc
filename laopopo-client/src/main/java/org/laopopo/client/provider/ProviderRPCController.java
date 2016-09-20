@@ -1,6 +1,5 @@
 package org.laopopo.client.provider;
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.laopopo.common.serialization.SerializerHolder.serializerImpl;
 import static org.laopopo.common.utils.Reflects.fastInvoke;
 import static org.laopopo.common.utils.Reflects.findMatchingParameterTypes;
@@ -15,7 +14,7 @@ import java.util.List;
 
 import javax.management.ServiceNotFoundException;
 
-import org.laopopo.client.metrics.Metrics;
+import org.laopopo.client.metrics.ServiceMeterManager;
 import org.laopopo.client.provider.DefaultServiceProviderContainer.CurrentServiceState;
 import org.laopopo.client.provider.flow.control.ServiceFlowControllerManager;
 import org.laopopo.client.provider.model.ServiceWrapper;
@@ -32,9 +31,6 @@ import org.laopopo.common.utils.SystemClock;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.codahale.metrics.Meter;
-import com.codahale.metrics.Timer;
 
 /**
  * 
@@ -55,48 +51,57 @@ public class ProviderRPCController {
 
 	public void handlerRPCRequest(RemotingTransporter request, Channel channel) {
 		
-		Meter rejectionMeter = null;  			// 请求被拒绝次数统计
-		Timer processingTimer = null;           // 统计请求的时间
 		
 		String serviceName = null;
-
 		RequestCustomBody body = null;
+		int requestSize = 0;
 
 		try {
 			byte[] bytes = request.bytes();
+			requestSize = bytes.length;
 			request.bytes(null);
 
 			body = serializerImpl().readObject(bytes, RequestCustomBody.class);
+			
 			request.setCustomHeader(body);
 			serviceName = body.getServiceName();
 			
-			rejectionMeter = Metrics.meter(serviceName+"::rejection");
-			processingTimer = Metrics.timer(serviceName+"::processing");
+			
+			ServiceMeterManager.incrementCallTimes(serviceName);
+			ServiceMeterManager.incrementRequestSize(serviceName, requestSize);
 			
 		} catch (Exception e) {
-			rejected(BAD_REQUEST, channel, request,rejectionMeter);
+			rejected(BAD_REQUEST, channel, request,serviceName);
 			return;
 		}
 		
 		final Pair<CurrentServiceState, ServiceWrapper> pair = defaultProvider.getProviderController().getProviderContainer().lookupService(serviceName);
 		if (pair == null || pair.getValue() == null) {
-            rejected(SERVICE_NOT_FOUND, channel, request,rejectionMeter);
+            rejected(SERVICE_NOT_FOUND, channel, request,serviceName);
             return;
         }
 		
 		// app flow control
         ServiceFlowControllerManager serviceFlowControllerManager = defaultProvider.getProviderController().getServiceFlowControllerManager();
         if (!serviceFlowControllerManager.isAllow(serviceName)) {
-            rejected(APP_FLOW_CONTROL,channel, request,rejectionMeter);
+            rejected(APP_FLOW_CONTROL,channel, request,serviceName);
             return;
         }
         
-        process(pair,request,channel,processingTimer);
+        process(pair,request,channel,serviceName,body.getTimestamp());
 	}
 
 
 
-	private void process(Pair<CurrentServiceState, ServiceWrapper> pair, final RemotingTransporter request, Channel channel,final Timer processingTimer) {
+	/**
+	 * RPC的核心处理
+	 * @param pair
+	 * @param request
+	 * @param channel
+	 * @param serviceName
+	 * @param beginTime
+	 */
+	private void process(Pair<CurrentServiceState, ServiceWrapper> pair, final RemotingTransporter request, Channel channel,final String serviceName,final long beginTime) {
 		
 		Object invokeResult = null;
 		
@@ -128,10 +133,12 @@ public class ProviderRPCController {
 
 			public void operationComplete(ChannelFuture future) throws Exception {
 				
-				long elapsed = SystemClock.millisClock().now() - request.timestamp();
+				long elapsed = SystemClock.millisClock().now() - beginTime;
+				
+				logger.info("call time is [{}]  and minus [{}]",beginTime,elapsed);
 				if (future.isSuccess()) {
 					
-					processingTimer.update(elapsed, MILLISECONDS);
+					ServiceMeterManager.incrementTotalTime(serviceName, elapsed);
 				} else {
 					logger.info("request {} get failed response {}", request, response);
 				}
@@ -140,9 +147,11 @@ public class ProviderRPCController {
 		
 	}
 
-	private void rejected(Status status, Channel channel, final RemotingTransporter request,Meter rejectionMeter) {
+	private void rejected(Status status, Channel channel, final RemotingTransporter request,String serviceName) {
 
-		rejectionMeter.mark();
+		if(null != serviceName){
+			ServiceMeterManager.incrementCallTimes(serviceName);
+		}
 		ResultWrapper result = new ResultWrapper();
 		switch (status) {
 		case SERVER_BUSY:

@@ -8,13 +8,13 @@ public class ServiceFlowController {
 
 	private AtomicLong[] metricses = new AtomicLong[] { new AtomicLong(0), new AtomicLong(0), new AtomicLong(0) };
 
-	public void incrementAtCurrentMinute() {
+	public long incrementAtCurrentMinute() {
 
 		long currentTime = SystemClock.millisClock().now();
 		int index = (int) ((currentTime / 60000) % 3);
 
 		AtomicLong atomicLong = metricses[index];
-		atomicLong.incrementAndGet();
+		return atomicLong.incrementAndGet();
 
 	}
 
@@ -27,14 +27,6 @@ public class ServiceFlowController {
 
 	}
 
-	public long getCurrentCallCount() {
-
-		long currentTime = SystemClock.millisClock().now();
-		int index = (int) (((currentTime / 60000)) % 3);
-		AtomicLong atomicLong = metricses[index];
-		return atomicLong.get();
-
-	}
 
 	public long getNextMinuteCallCount() {
 

@@ -26,7 +26,6 @@
 		<bytebuddy.version>1.2.3</bytebuddy.version>
 		<cglib.version>3.1</cglib.version>
 		<spring-framework.version>4.3.0.RELEASE</spring-framework.version>
-		<metrics.version>3.1.2</metrics.version>
 		<fastjson.version>1.2.3</fastjson.version>
 		<kryo.version>2.21</kryo.version>
 	</properties>
@@ -162,17 +161,6 @@
 				<groupId>org.springframework</groupId>
 				<artifactId>spring-webmvc</artifactId>
 				<version>${spring-framework.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>io.dropwizard.metrics</groupId>
-				<artifactId>metrics-core</artifactId>
-				<version>${metrics.version}</version>
-				<exclusions>
-					<exclusion>
-						<groupId>org.slf4j</groupId>
-						<artifactId>slf4j-api</artifactId>
-					</exclusion>
-				</exclusions>
 			</dependency>
 		</dependencies>
 

@@ -17,6 +17,7 @@ import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.transport.body.RequestCustomBody;
 import org.laopopo.common.transport.body.ResponseCustomBody;
 import org.laopopo.common.utils.ChannelGroup;
+import org.laopopo.common.utils.SystemClock;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +67,7 @@ public class SynInvoker {
 		RequestCustomBody body = new RequestCustomBody();
 		body.setArgs(args);
 		body.setServiceName(serviceName);
+		body.setTimestamp(SystemClock.millisClock().now());
 		
 		Long time = null;
 		if(methodsSpecialTimeoutMillis != null){
@@ -81,7 +83,7 @@ public class SynInvoker {
 		RemotingTransporter request = RemotingTransporter.createRequestTransporter(LaopopoProtocol.RPC_REQUEST, body);
 		RemotingTransporter response = consumer.sendRpcRequestToProvider(channelGroup.next(),request,time);
 		ResponseCustomBody customBody = serializerImpl().readObject(response.bytes(), ResponseCustomBody.class);
-		return customBody.getResultWrapper().getResult();
+		return customBody.getResult();
 	}
 
 }

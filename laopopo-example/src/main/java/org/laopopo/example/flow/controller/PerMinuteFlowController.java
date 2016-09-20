@@ -43,10 +43,6 @@ public class PerMinuteFlowController {
 			callXXXXService("TEST.SERVICE");
 			Thread.sleep(20l);
 		}
-		
-		
-		
-
 	}
 	
 	private static void clearNextMinuteCallCount() {
@@ -65,6 +61,8 @@ public class PerMinuteFlowController {
 			serviceFlowController.put(service, controller);
 		}
 		controller.incrementAtCurrentMinute();
+		
+		//调用的核心逻辑处理
 		
 	}
 
@@ -125,7 +123,6 @@ public class PerMinuteFlowController {
 		public void setMetricses(AtomicLong[] metricses) {
 			this.metricses = metricses;
 		}
-		
 		
 	}
 	

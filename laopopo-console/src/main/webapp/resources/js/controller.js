@@ -69,12 +69,41 @@ $(function() {
 									valign : 'bottom',
 									formatter : function(value, row, index) {
 										var callSuccessRatio = "";
-										if((row.totalCallCount + row.totalFailCount) != 0){
-											callSuccessRatio= (row.totalCallCount * 100  / (row.totalCallCount + row.totalFailCount)).toString().substring(0,4) +"%";
-										}else{
+										if ((row.totalCallCount + row.totalFailCount) != 0) {
+											callSuccessRatio = (row.totalCallCount * 100 / (row.totalCallCount + row.totalFailCount))
+													.toString().substring(0, 4)
+													+ "%";
+										} else {
 											callSuccessRatio = "-";
 										}
 										return callSuccessRatio;
+									},
+								},
+								{
+									field : 'handlerAvgTime',
+									title : '平均调用时间',
+									align : 'center',
+									width : '30',
+									formatter : function(value, row, index) {
+										return row.handlerAvgTime + "ms";
+									},
+								},
+								{
+									field : 'requestSize',
+									title : '总处理请求大小',
+									align : 'center',
+									width : '150',
+									valign : 'bottom',
+									formatter : function(value, row, index) {
+										var requestSizeView = "";
+										if ((8 * 1024) > row.requestSize) {
+											requestSizeView = row.requestSize + "字节";
+										} else if ((8 * 1024 * 1024) > row.requestSize) {
+											requestSizeView = row.requestSize / 8 / 1024 +"MB";
+										}else if((8 * 1024 * 1024 * 1024) > row.requestSize){
+											requestSizeView = row.requestSize / 8 / 1024 / 1024 +"GB";
+										}
+										return requestSizeView;
 									},
 								},
 								{
@@ -102,73 +131,115 @@ $(function() {
 function detailFormatter(index, row) {
 	var html = '';
 	html += '<table class="table"><caption>服务提供者信息</caption><thead><tr>'
-			+'<th style="text-align: center; vertical-align: middle;">服务提供地址</th>'
-			+'<th style="text-align: center; vertical-align: middle;">权重</th>'
-			+'<th style="text-align: center; vertical-align: middle;">是否可降级</th>'
-			+'<th style="text-align: center; vertical-align: middle;">是否已经降级</th>'
-			+'<th style="text-align: center; vertical-align: middle;">审核状态</th>'
-			+'<th style="text-align: center; vertical-align: middle;">调用次数</th>'
-			+'<th style="text-align: center; vertical-align: middle;">失败次数</th>'
-			+'<th style="text-align: center; vertical-align: middle;">成功率</th>'
-			+'<th style="text-align: center; vertical-align: middle;">操作</th>'
-			+'</tr></thead><tbody>';
-	$.each(row, function(key, value) {
-		if(key == "providerMaps"){
-			
-			for(var obj in value){
-				var reviewStr = '';
-				switch (value[obj].serviceReviewState) {
-				case 'PASS_REVIEW':
-					reviewStr = "审核通过";
-					break;
-				case 'HAS_NOT_REVIEWED':
-					reviewStr = "未审核";
-					break;
-				case 'NOT_PASS_REVIEW':
-					reviewStr = "未通过审核";
-					break;
-				case 'FORBIDDEN':
-					reviewStr = "禁用";
-					break;
-				default:
-					break;
-				}
-				var isSupportDegrade = value[obj].isSupportDegrade ? '是':'否';
-				var isDegradeService = value[obj].isDegradeService ? '是':'否';
-				var callSuccessRatio = "";
-				if(value[obj].callCount + value[obj].failCount != 0){
-					callSuccessRatio= (value[obj].callCount * 100  / (value[obj].callCount + value[obj].failCount)).toString().substring(0,4) +"%";
-				}else{
-					callSuccessRatio = "-";
-				}
-				html += '<tr><td>'+value[obj].host+':'+value[obj].port+'</td>'
-						+'<td>'+50+'</td>'
-						+'<td>'+ isSupportDegrade +'</td>'
-						+'<td>'+ isDegradeService +'</td>'
-						+'<td>'+reviewStr+'</td>'
-						+'<td>'+value[obj].callCount+'</td>'
-						+'<td>'+value[obj].failCount+'</td>'
-						+'<td>'+callSuccessRatio+'</td>'
-						+'<td><button class="btn btn-success btn-xs" onclick=forbidden("'+value[obj].host+'",'+value[obj].port+',"'+row.serviceName+'")>禁用</button>'
-						+'&nbsp;&nbsp;<button class="btn btn-success btn-xs" onclick=degradeService("'+value[obj].host+'",'+value[obj].port+',"'+row.serviceName+'")>降级</button>'
-						+'&nbsp;&nbsp;<button class="btn btn-success btn-xs" onclick=reviewService("'+value[obj].host+'",'+value[obj].port+',"'+row.serviceName+'")>审核通过</button></td></tr>';
-			}
-		}
-	});
+			+ '<th style="text-align: center; vertical-align: middle;">服务提供地址</th>'
+			+ '<th style="text-align: center; vertical-align: middle;">权重</th>'
+			+ '<th style="text-align: center; vertical-align: middle;">是否可降级</th>'
+			+ '<th style="text-align: center; vertical-align: middle;">是否已经降级</th>'
+			+ '<th style="text-align: center; vertical-align: middle;">审核状态</th>'
+			+ '<th style="text-align: center; vertical-align: middle;">调用次数</th>'
+			+ '<th style="text-align: center; vertical-align: middle;">失败次数</th>'
+			+ '<th style="text-align: center; vertical-align: middle;">成功率</th>'
+			+ '<th style="text-align: center; vertical-align: middle;">操作</th>'
+			+ '</tr></thead><tbody>';
+	$
+			.each(
+					row,
+					function(key, value) {
+						if (key == "providerMaps") {
+
+							for ( var obj in value) {
+								var reviewStr = '';
+								switch (value[obj].serviceReviewState) {
+								case 'PASS_REVIEW':
+									reviewStr = "审核通过";
+									break;
+								case 'HAS_NOT_REVIEWED':
+									reviewStr = "未审核";
+									break;
+								case 'NOT_PASS_REVIEW':
+									reviewStr = "未通过审核";
+									break;
+								case 'FORBIDDEN':
+									reviewStr = "禁用";
+									break;
+								default:
+									break;
+								}
+								var isSupportDegrade = value[obj].isSupportDegrade ? '是'
+										: '否';
+								var isDegradeService = value[obj].isDegradeService ? '是'
+										: '否';
+								var callSuccessRatio = "";
+								if (value[obj].callCount + value[obj].failCount != 0) {
+									callSuccessRatio = (value[obj].callCount * 100 / (value[obj].callCount + value[obj].failCount))
+											.toString().substring(0, 4)
+											+ "%";
+								} else {
+									callSuccessRatio = "-";
+								}
+								html += '<tr><td>'
+										+ value[obj].host
+										+ ':'
+										+ value[obj].port
+										+ '</td>'
+										+ '<td>'
+										+ 50
+										+ '</td>'
+										+ '<td>'
+										+ isSupportDegrade
+										+ '</td>'
+										+ '<td>'
+										+ isDegradeService
+										+ '</td>'
+										+ '<td>'
+										+ reviewStr
+										+ '</td>'
+										+ '<td>'
+										+ value[obj].callCount
+										+ '</td>'
+										+ '<td>'
+										+ value[obj].failCount
+										+ '</td>'
+										+ '<td>'
+										+ callSuccessRatio
+										+ '</td>'
+										+ '<td><button class="btn btn-success btn-xs" onclick=forbidden("'
+										+ value[obj].host
+										+ '",'
+										+ value[obj].port
+										+ ',"'
+										+ row.serviceName
+										+ '")>禁用</button>'
+										+ '&nbsp;&nbsp;<button class="btn btn-success btn-xs" onclick=degradeService("'
+										+ value[obj].host
+										+ '",'
+										+ value[obj].port
+										+ ',"'
+										+ row.serviceName
+										+ '")>降级</button>'
+										+ '&nbsp;&nbsp;<button class="btn btn-success btn-xs" onclick=reviewService("'
+										+ value[obj].host + '",'
+										+ value[obj].port + ',"'
+										+ row.serviceName
+										+ '")>审核通过</button></td></tr>';
+							}
+						}
+					});
 	html += "</tbody></table>";
-	
+
 	html += '<table class="table"><caption>服务消费者信息</caption><thead><tr>'
-		+'<th style="text-align: center; vertical-align: middle;">服务提供地址</th>'
-		+'</tr></thead><tbody>';
+			+ '<th style="text-align: center; vertical-align: middle;">服务提供地址</th>'
+			+ '</tr></thead><tbody>';
 	$.each(row, function(key, value) {
-		if(key == "consumerInfos"){
-			
-			if(value.length == 0){
+		if (key == "consumerInfos") {
+
+			if (value.length == 0) {
 				html += '<tr><td>暂无消费者</td></tr>';
 			}
-			
-			for(var index = 0;index < value.length;index++){ 
-				html += '<tr><td>'+value[index].host +":"+value[index].port+'</td></tr>';
+
+			for (var index = 0; index < value.length; index++) {
+				html += '<tr><td>' + value[index].host + ":"
+						+ value[index].port + '</td></tr>';
 			}
 		}
 	});
@@ -176,60 +247,60 @@ function detailFormatter(index, row) {
 	return html;
 }
 
-function reviewService(host,port,serviceName){
+function reviewService(host, port, serviceName) {
 	$.ajax({
-        url: "/laopopo-console/manager.do",
-        type: 'GET',
-        data: {
-        	"managerType" : 5,
-        	"host":host,
-        	"port":port,
-        	"serviceName":serviceName
-        },
-        async: false,
-        success: function(result) {
-        	 if(result.status){
-        		 $("#monitorTable").bootstrapTable('refresh');
-        	 }
+		url : "/laopopo-console/manager.do",
+		type : 'GET',
+		data : {
+			"managerType" : 5,
+			"host" : host,
+			"port" : port,
+			"serviceName" : serviceName
+		},
+		async : false,
+		success : function(result) {
+			if (result.status) {
+				$("#monitorTable").bootstrapTable('refresh');
+			}
 		}
 	});
 }
 
-function degradeService(host,port,serviceName){
+function degradeService(host, port, serviceName) {
 	$.ajax({
-        url: "/laopopo-console/manager.do",
-        type: 'GET',
-        data: {
-        	"managerType" : 2,
-        	"host":host,
-        	"port":port,
-        	"serviceName":serviceName
-        },
-        async: false,
-        success: function(result) {
-        	 if(result.status){
-        		 $("#monitorTable").bootstrapTable('refresh');
-        	 }
+		url : "/laopopo-console/manager.do",
+		type : 'GET',
+		data : {
+			"managerType" : 2,
+			"host" : host,
+			"port" : port,
+			"serviceName" : serviceName
+		},
+		async : false,
+		success : function(result) {
+			if (result.status) {
+				$("#monitorTable").bootstrapTable('refresh');
+			}
 		}
 	});
 }
 
-/***禁用某个地址提供的某个服务****/
-function forbidden(host,port,serviceName){
+/** *禁用某个地址提供的某个服务*** */
+function forbidden(host, port, serviceName) {
 	$.ajax({
-        url: "/laopopo-console/manager.do",
-        type: 'GET',
-        data: {
-        	"managerType" : 1,
-        	"host":host,
-        	"port":port,
-        	"serviceName":serviceName
-        },
-        async: false,
-        success: function(result) {
-        	 if(result.status){
-        		 $("#monitorTable").bootstrapTable('refresh');
-        	 }
+		url : "/laopopo-console/manager.do",
+		type : 'GET',
+		data : {
+			"managerType" : 1,
+			"host" : host,
+			"port" : port,
+			"serviceName" : serviceName
+		},
+		async : false,
+		success : function(result) {
+			if (result.status) {
+				$("#monitorTable").bootstrapTable('refresh');
+			}
 		}
 	});
 }
@@ -245,8 +316,8 @@ function getParams(params) {
 	};
 }
 
-function openModel(){
-	$("#commonModal").load("model.html",function(){
+function openModel() {
+	$("#commonModal").load("model.html", function() {
 		$(this).modal('show');
 	});
 }

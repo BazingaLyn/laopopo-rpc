@@ -6,7 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 
-import org.laopopo.client.metrics.Metrics;
+import org.laopopo.client.metrics.Meter;
+import org.laopopo.client.metrics.ServiceMeterManager;
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.rpc.MetricsReporter;
 import org.laopopo.common.transport.body.ProviderMetricsCustomBody;
@@ -48,34 +49,46 @@ public class ProviderMonitorController {
 			logger.warn("publish info is empty");
 			return;
 		}
-		
-		
 
-		ConcurrentMap<String, MetricsReporter> metricsMap = Metrics.getGlobalMetricsReporter();
+		ConcurrentMap<String, Meter> metricsMap = ServiceMeterManager.getGlobalMeterManager();
 		if (metricsMap != null && metricsMap.keySet() != null && metricsMap.values() != null) {
 
 			List<MetricsReporter> reporters = new ArrayList<MetricsReporter>();
 			
-			reporters.addAll(metricsMap.values());
+			List<Meter> meters = new ArrayList<Meter>();
+			meters.addAll(metricsMap.values());
 			
-			for(int i = 0;i<reporters.size();i++){
-				String serviceName = reporters.get(i).getServiceName();
-				PublishServiceCustomBody body = defaultProvider.getGlobalPublishService().get(serviceName);
+			if(!meters.isEmpty()){
 				
-				if(body == null){
-					logger.warn("servicename [{}] has no publishInfo ",serviceName);
-					continue;
+				for(int i = 0;i<meters.size();i++){
+					
+					MetricsReporter metricsReporter = new MetricsReporter();
+					
+					String serviceName = meters.get(i).getServiceName();
+					PublishServiceCustomBody body = defaultProvider.getGlobalPublishService().get(serviceName);
+					
+					if(body == null){
+						logger.warn("servicename [{}] has no publishInfo ",serviceName);
+						continue;
+					}
+					
+					metricsReporter.setServiceName(serviceName);
+					metricsReporter.setHost(body.getHost());
+					metricsReporter.setPort(body.isVIPService() ? (body.getPort() -2):body.getPort());
+					metricsReporter.setCallCount(meters.get(i).getCallCount().get());
+					metricsReporter.setFailCount(meters.get(i).getFailedCount().get());
+					metricsReporter.setTotalReuqestTime(meters.get(i).getTotalCallTime().get());
+					metricsReporter.setRequestSize(meters.get(i).getTotalRequestSize().get());
+					reporters.add(metricsReporter);
 				}
-				reporters.get(i).setHost(body.getHost());
-				reporters.get(i).setPort(body.isVIPService() ? (body.getPort() -2):body.getPort());
-			}
-			ProviderMetricsCustomBody body = new ProviderMetricsCustomBody();
-			body.setMetricsReporter(reporters);
-			RemotingTransporter remotingTransporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.MERTRICS_SERVICE, body);
-			Channel channel = defaultProvider.getMonitorChannel();
+				ProviderMetricsCustomBody body = new ProviderMetricsCustomBody();
+				body.setMetricsReporter(reporters);
+				RemotingTransporter remotingTransporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.MERTRICS_SERVICE, body);
+				Channel channel = defaultProvider.getMonitorChannel();
 
-			if (null != channel && channel.isActive() && channel.isWritable()) {
-				channel.writeAndFlush(remotingTransporter);
+				if (null != channel && channel.isActive() && channel.isWritable()) {
+					channel.writeAndFlush(remotingTransporter);
+				}
 			}
 		}
 
