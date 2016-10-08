@@ -1,5 +1,7 @@
 package org.laopopo.client.provider;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -32,6 +34,31 @@ public class DefaultServiceProviderContainer implements ServiceProviderContainer
 		return serviceProviders.get(uniqueKey);
 	}
 	
+	@Override
+	public List<Pair<String, CurrentServiceState>> getNeedAutoDegradeService() {
+		
+		ConcurrentMap<String, Pair<CurrentServiceState, ServiceWrapper>> _serviceProviders = this.serviceProviders;
+		List<Pair<String, CurrentServiceState>> list = new ArrayList<Pair<String,CurrentServiceState>>();
+		
+		for(String serviceName: _serviceProviders.keySet()){
+			
+			Pair<CurrentServiceState, ServiceWrapper> pair = _serviceProviders.get(serviceName);
+			
+			//如果已经设置成自动降级的时候
+			if(pair != null && pair.getKey().getIsAutoDegrade().get()){
+				
+				Pair<String, CurrentServiceState> targetPair = new Pair<String,CurrentServiceState>();
+				targetPair.setKey(serviceName);
+				targetPair.setValue(pair.getKey());
+				list.add(targetPair);
+			}
+			
+		}
+		return list;
+	}
+	
+	
+	
 	/**
 	 * 
 	 * @author BazingaLyn
@@ -42,10 +69,10 @@ public class DefaultServiceProviderContainer implements ServiceProviderContainer
 	public static class CurrentServiceState {
 		
 		
-		private AtomicBoolean hasDegrade = new AtomicBoolean(false);   //是否已经降级
-		private AtomicBoolean hasLimitStream =new AtomicBoolean(true); //是否已经限流
-		private AtomicBoolean isAutoDegrade =new AtomicBoolean(false); //是否已经开始自动降级
-		private Integer failedPercent = 90;                            //调用成功率低于多少开始自动降级
+		private AtomicBoolean hasDegrade = new AtomicBoolean(false);    // 是否已经降级
+		private AtomicBoolean hasLimitStream = new AtomicBoolean(true); // 是否已经限流
+		private AtomicBoolean isAutoDegrade = new AtomicBoolean(false); // 是否已经开始自动降级
+		private Integer minSuccecssRate = 90; 							// 服务最低的成功率，调用成功率低于多少开始自动降级
 
 		public AtomicBoolean getHasDegrade() {
 			return hasDegrade;
@@ -71,13 +98,14 @@ public class DefaultServiceProviderContainer implements ServiceProviderContainer
 			this.isAutoDegrade = isAutoDegrade;
 		}
 
-		public Integer getFailedPercent() {
-			return failedPercent;
+		public Integer getMinSuccecssRate() {
+			return minSuccecssRate;
 		}
 
-		public void setFailedPercent(Integer failedPercent) {
-			this.failedPercent = failedPercent;
+		public void setMinSuccecssRate(Integer minSuccecssRate) {
+			this.minSuccecssRate = minSuccecssRate;
 		}
+		
 	}
 
 }

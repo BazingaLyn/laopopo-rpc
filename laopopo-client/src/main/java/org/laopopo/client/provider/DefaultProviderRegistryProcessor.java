@@ -1,5 +1,6 @@
 package org.laopopo.client.provider;
 
+import static org.laopopo.common.protocal.LaopopoProtocol.AUTO_DEGRADE_SERVICE;
 import static org.laopopo.common.protocal.LaopopoProtocol.DEGRADE_SERVICE;
 import io.netty.channel.ChannelHandlerContext;
 
@@ -31,7 +32,9 @@ public class DefaultProviderRegistryProcessor implements NettyRequestProcessor {
 		
 		switch (request.getCode()) {
 		   case DEGRADE_SERVICE:
-			    return this.defaultProvider.handlerDegradeService(request,ctx.channel());
+			    return this.defaultProvider.handlerDegradeServiceRequest(request,ctx.channel(),DEGRADE_SERVICE);
+		   case AUTO_DEGRADE_SERVICE:
+			    return this.defaultProvider.handlerDegradeServiceRequest(request,ctx.channel(),AUTO_DEGRADE_SERVICE);
 		}
 		return null;
 	}

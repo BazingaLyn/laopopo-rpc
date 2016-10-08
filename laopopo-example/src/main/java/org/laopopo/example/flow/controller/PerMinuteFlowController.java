@@ -136,9 +136,9 @@ public class PerMinuteFlowController {
 					Thread.sleep(5000);
 					for(String str : serviceFlowController.keySet()){
 						FlowController flowController = serviceFlowController.get(str);
-						logger.info("上一秒调用的次数是[{}]",flowController.getLastCallCountAtLastMinute());
-						logger.info("当前秒调用的次数是[{}]",flowController.getCurrentCallCount());
-						logger.info("下以秒调用的次数是[{}]",flowController.getNextMinuteCallCount());
+						logger.info("上一分钟调用的次数是[{}]",flowController.getLastCallCountAtLastMinute());
+						logger.info("当前分钟调用的次数是[{}]",flowController.getCurrentCallCount());
+						logger.info("下以分钟调用的次数是[{}]",flowController.getNextMinuteCallCount());
 					}
 				} catch (InterruptedException e) {
 					e.printStackTrace();

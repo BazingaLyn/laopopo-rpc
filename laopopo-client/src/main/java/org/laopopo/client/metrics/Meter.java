@@ -11,15 +11,11 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class Meter {
 	
-	private String serviceName;
-	
-	private AtomicLong callCount = new AtomicLong(0l);
-	
-	private AtomicLong failedCount = new AtomicLong(0l);
-	
-	private AtomicLong totalCallTime = new AtomicLong(0l);
-	
-	private AtomicLong totalRequestSize = new AtomicLong(0l);
+	private String serviceName;								 //服务名
+	private AtomicLong callCount = new AtomicLong(0l);       //调用次数
+	private AtomicLong failedCount = new AtomicLong(0l);	 //失败次数
+	private AtomicLong totalCallTime = new AtomicLong(0l);   //总的调用时间
+	private AtomicLong totalRequestSize = new AtomicLong(0l);//入参大小
 	
 	public Meter(String serviceName) {
 		this.serviceName = serviceName;
@@ -65,14 +61,4 @@ public class Meter {
 		this.totalRequestSize = totalRequestSize;
 	}
 	
-//	public long getAvgHandlerTime(){
-//		
-//		long callTotalCount = callCount.get();
-//		long failTotalCount = failedCount.get();
-//		long totalHandlerTime = totalCallTime.get();
-//		
-//		return totalHandlerTime /(callTotalCount - failTotalCount);
-//		
-//	}
-
 }

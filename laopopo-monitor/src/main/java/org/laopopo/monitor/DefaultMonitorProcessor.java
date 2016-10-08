@@ -57,12 +57,10 @@ public class DefaultMonitorProcessor implements NettyRequestProcessor {
         }
 		
 		switch (request.getCode()) {
-		  case MERTRICS_SERVICE: //因为服务提供者端是定时发送统计信息的，如果没有收到或者消费失败了，则丢弃，不做强制消费的ack判断要求provider重发
-			  return handlerMetricsService(request,ctx.channel());
-		  case MANAGER_SERVICE: 
-			  return handlerManagerService(request,ctx.channel());
-			  
-		
+			  case MERTRICS_SERVICE: //因为服务提供者端是定时发送统计信息的，如果没有收到或者消费失败了，则丢弃，不做强制消费的ack判断要求provider重发
+				  return handlerMetricsService(request,ctx.channel());
+			  case MANAGER_SERVICE: 
+				  return handlerManagerService(request,ctx.channel());
 		}
 		return null;
 	}

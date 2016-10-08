@@ -101,13 +101,19 @@ public class DefaultMonitor implements MonitorNode {
 
 	}
 
+	/**
+	 * 从硬盘上恢复以前的统计数据
+	 */
 	private void recoverFromDisk() {
+		
 		String persistString = PersistUtils.file2String(monitorConfig.getStorePathRootDir());
 
 		if (null != persistString) {
 			List<MetricsReporter> metricsReporters = JSON.parseArray(persistString.trim(), MetricsReporter.class);
 			if (null != metricsReporters) {
+				
 				for (MetricsReporter metricsReporter : metricsReporters) {
+					
 					Address address = new Address(metricsReporter.getHost(), metricsReporter.getPort());
 					String serviceName = metricsReporter.getServiceName();
 					ConcurrentMap<Address, MetricsReporter> concurrentMap = new ConcurrentHashMap<RegisterMeta.Address, MetricsReporter>();
@@ -118,6 +124,10 @@ public class DefaultMonitor implements MonitorNode {
 		}
 	}
 
+	/**
+	 * 
+	 * @throws IOException
+	 */
 	protected void persistMetricsToDisk() throws IOException {
 
 		ConcurrentMap<String, ConcurrentMap<Address, MetricsReporter>> historyGlobalMetricsReporter = this.historyGlobalMetricsReporter;
@@ -135,7 +145,6 @@ public class DefaultMonitor implements MonitorNode {
 			if (!metricsReporters.isEmpty()) {
 
 				String persistStr = JSON.toJSONString(metricsReporters, false);
-
 				PersistUtils.string2File(persistStr, monitorConfig.getStorePathRootDir());
 			}
 

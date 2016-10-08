@@ -13,5 +13,6 @@ public enum ServiceReviewState {
 	PASS_REVIEW,      //通过审核
 	NOT_PASS_REVIEW,  //未通过审核
 	FORBIDDEN         //禁用
+	
 
 }

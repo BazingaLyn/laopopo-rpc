@@ -9,9 +9,6 @@ package org.laopopo.monitor;
  */
 public interface MonitorNode {
 	
-	
 	void start();
-	
-	
 
 }

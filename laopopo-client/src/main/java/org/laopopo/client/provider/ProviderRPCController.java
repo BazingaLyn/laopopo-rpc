@@ -12,15 +12,10 @@ import io.netty.channel.ChannelFutureListener;
 
 import java.util.List;
 
-import javax.management.ServiceNotFoundException;
-
 import org.laopopo.client.metrics.ServiceMeterManager;
 import org.laopopo.client.provider.DefaultServiceProviderContainer.CurrentServiceState;
 import org.laopopo.client.provider.flow.control.ServiceFlowControllerManager;
 import org.laopopo.client.provider.model.ServiceWrapper;
-import org.laopopo.common.exception.rpc.BadRequestException;
-import org.laopopo.common.exception.rpc.FlowControlException;
-import org.laopopo.common.exception.rpc.ServerBusyException;
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.transport.body.RequestCustomBody;
 import org.laopopo.common.transport.body.ResponseCustomBody;
@@ -112,6 +107,7 @@ public class ProviderRPCController {
 		
 		Object[] args = ((RequestCustomBody)request.getCustomHeader()).getArgs();
 		
+		//判断服务是否已经被设定为自动降级，如果被设置为自动降级且有它自己的mock类的话，则将targetCallObj切换到mock方法上来
 		if(currentServiceState.getHasDegrade().get() && serviceWrapper.getMockDegradeServiceProvider() != null){
 			targetCallObj = serviceWrapper.getMockDegradeServiceProvider();
 		}
@@ -154,17 +150,14 @@ public class ProviderRPCController {
 		}
 		ResultWrapper result = new ResultWrapper();
 		switch (status) {
-		case SERVER_BUSY:
-			result.setError(new ServerBusyException());
-			break;
 		case BAD_REQUEST:
-			result.setError(new BadRequestException());
+			result.setError("bad request");
 		case SERVICE_NOT_FOUND:
-			result.setError(new ServiceNotFoundException(((RequestCustomBody) request.getCustomHeader()).getServiceName()));
+			result.setError(((RequestCustomBody) request.getCustomHeader()).getServiceName() +" no service found");
 			break;
 		case APP_FLOW_CONTROL:
 		case PROVIDER_FLOW_CONTROL:
-			result.setError(new FlowControlException());
+			result.setError("over unit time call limit");
 			break;
 		default:
 			logger.warn("Unexpected status.", status.description());

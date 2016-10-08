@@ -64,7 +64,6 @@ public class KaleidoscopeInfo {
 		this.nettyRemotingClient = new NettyRemotingClient(clientConfig);
 
 		this.nettyRemotingClient.start();
-
 		logger.info("console init successfully");
 
 		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
@@ -145,6 +144,7 @@ public class KaleidoscopeInfo {
 						serviceMetrics.setHandlerAvgTime(metrics.getHandlerAvgTime()); //平均请求时间
 						serviceMetrics.setTotalCallCount(metrics.getTotalCallCount()); //成功请求的次数
 						serviceMetrics.setTotalFailCount(metrics.getTotalFailCount()); //失败请求的次数
+						serviceMetrics.setRequestSize(metrics.getRequestSize());       //总共的请求时间
 						//更新每个提供者的信息
 						ConcurrentMap<Address, ProviderInfo> existMap = serviceMetrics.getProviderMaps(); //本地的提供者的信息
 						ConcurrentMap<Address, ProviderInfo> remotingMap = metrics.getProviderMaps();
@@ -167,7 +167,6 @@ public class KaleidoscopeInfo {
 			} catch (InterruptedException | RemotingException e) {
 				logger.error("connection to monitor error address [{}] and exception [{}]", monitorAddress, e.getMessage());
 			}
-
 		}
 	}
 
@@ -240,6 +239,14 @@ public class KaleidoscopeInfo {
 	}
 	
 	public Map<String, Object> findInfoByPage(int pageSize, int offset) {
+		
+		try {
+			//实时刷新数据
+			refreshMonitorServerInfo();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		
 		Map<String, Object> resultMap = new HashMap<String, Object>();
 
 		Integer total = 0;
@@ -256,6 +263,14 @@ public class KaleidoscopeInfo {
 		return resultMap;
 	}
 
+	/**
+	 * 通知某个实例服务修改服务的状态
+	 * @param host
+	 * @param port
+	 * @param serviceName
+	 * @param reviewState
+	 * @return
+	 */
 	public Boolean notifyReviewService(String host, int port, String serviceName,ServiceReviewState reviewState) {
 		
 		ManagerServiceCustomBody managerServiceCustomBody = new ManagerServiceCustomBody();
@@ -267,7 +282,6 @@ public class KaleidoscopeInfo {
 		RemotingTransporter requestTransporter = RemotingTransporter.createRequestTransporter(LaopopoProtocol.MANAGER_SERVICE, managerServiceCustomBody);
 		
 		boolean successFlag = true;
-		
 		if(this.registryAddress != null){
 			
         String[] registryAddresses = this.registryAddress.split(",");
@@ -282,7 +296,6 @@ public class KaleidoscopeInfo {
 					logger.error("send notify fail serviceName[{}] and exception [{}]",serviceName,e.getMessage());
 					successFlag = false;
 				}
-				
 			}
 		}else{
 			successFlag = false;
@@ -293,7 +306,7 @@ public class KaleidoscopeInfo {
 	public Boolean notifyServiceDegrade(String host, int port, String serviceName) {
 		
 		ManagerServiceCustomBody managerServiceCustomBody = new ManagerServiceCustomBody();
-		// 设置属性为==>审核
+		// 设置属性为==>降级
 		managerServiceCustomBody.setManagerServiceRequestType(ManagerServiceRequestType.DEGRADE);
 		managerServiceCustomBody.setAddress(new Address(host, port));
 		managerServiceCustomBody.setSerivceName(serviceName);
@@ -320,7 +333,7 @@ public class KaleidoscopeInfo {
 			}else{
 				successFlag = false;
 			}
-		return null;
+		return successFlag;
 	}
 	
 

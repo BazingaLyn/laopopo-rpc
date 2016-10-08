@@ -39,15 +39,15 @@ public class DefaultConsumerRegistryProcessor implements NettyRequestProcessor {
 		}
 
 		switch (request.getCode()) {
-		case SUBCRIBE_RESULT:
-			// 回复ack信息 这个也要保持幂等性，因为有可能在consumer消费成功之后发送ack信息到registry信息丢失，registry回重新发送订阅结果信息
-			return this.defaultConsumer.getConsumerManager().handlerSubcribeResult(request, ctx.channel());
-		case SUBCRIBE_SERVICE_CANCEL:
-			// 回复ack信息
-			return this.defaultConsumer.getConsumerManager().handlerSubscribeResultCancel(request, ctx.channel());
-		case CHANGE_LOADBALANCE:
-			// 回复ack信息 
-			return this.defaultConsumer.getConsumerManager().handlerServiceLoadBalance(request, ctx.channel());
+			case SUBCRIBE_RESULT:
+				// 回复ack信息 这个也要保持幂等性，因为有可能在consumer消费成功之后发送ack信息到registry信息丢失，registry回重新发送订阅结果信息
+				return this.defaultConsumer.getConsumerManager().handlerSubcribeResult(request, ctx.channel());
+			case SUBCRIBE_SERVICE_CANCEL:
+				// 回复ack信息
+				return this.defaultConsumer.getConsumerManager().handlerSubscribeResultCancel(request, ctx.channel());
+			case CHANGE_LOADBALANCE:
+				// 回复ack信息 
+				return this.defaultConsumer.getConsumerManager().handlerServiceLoadBalance(request, ctx.channel());
 		}
 
 		return null;

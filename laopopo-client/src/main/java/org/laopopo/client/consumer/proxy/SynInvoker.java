@@ -12,6 +12,8 @@ import net.bytebuddy.implementation.bind.annotation.RuntimeType;
 
 import org.laopopo.client.annotation.RPConsumer;
 import org.laopopo.client.consumer.Consumer;
+import org.laopopo.common.exception.remoting.RemotingSendRequestException;
+import org.laopopo.common.exception.remoting.RemotingTimeoutException;
 import org.laopopo.common.exception.rpc.NoServiceException;
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.transport.body.RequestCustomBody;
@@ -47,30 +49,40 @@ public class SynInvoker {
 	}
 
 	@RuntimeType
-	public Object invoke(@Origin Method method, @AllArguments @RuntimeType Object[] args) throws Throwable {
+	public Object invoke(@Origin Method method, @AllArguments @RuntimeType Object[] args) {
 		
 		RPConsumer rpcConsumer = method.getAnnotation(RPConsumer.class);
 		
 		String serviceName = rpcConsumer.serviceName();
 		
 		ChannelGroup channelGroup = consumer.loadBalance(serviceName);
+		
 		if (channelGroup == null || channelGroup.size() == 0) {
-			if(channelGroup.getAddress() != null){
+			//如果有channelGroup但是channel中却没有active的Channel的有可能是用户通过直连的方式去调用，我们需要去根据远程的地址去初始化channel
+			if(channelGroup != null && channelGroup.getAddress() != null){
+				
 				logger.warn("direct connect provider");
-				Channel channel = consumer.directGetProviderByChannel(channelGroup.getAddress());
-				channelGroup.add(channel);
+				Channel channel = null;
+				try {
+					channel = consumer.directGetProviderByChannel(channelGroup.getAddress());
+					channelGroup.add(channel);
+					
+				} catch (InterruptedException e) {
+					logger.warn("direction get channel occor exception [{}]",e.getMessage());
+				}
 			}else{
 				throw new NoServiceException("没有第三方提供该服务，请检查服务名");
 			}
 		}
 
 		RequestCustomBody body = new RequestCustomBody();
-		body.setArgs(args);
-		body.setServiceName(serviceName);
-		body.setTimestamp(SystemClock.millisClock().now());
+		body.setArgs(args);                                   //调用参数
+		body.setServiceName(serviceName);                     //调用的服务名
+		body.setTimestamp(SystemClock.millisClock().now());   //调用的时间
 		
 		Long time = null;
 		if(methodsSpecialTimeoutMillis != null){
+			
 			Long methodTime = methodsSpecialTimeoutMillis.get(serviceName);
 			if(null != methodTime){
 				time = methodTime;
@@ -79,11 +91,24 @@ public class SynInvoker {
 			time = timeoutMillis == 0l ? 3000l :timeoutMillis;
 		}
 		
-		
 		RemotingTransporter request = RemotingTransporter.createRequestTransporter(LaopopoProtocol.RPC_REQUEST, body);
-		RemotingTransporter response = consumer.sendRpcRequestToProvider(channelGroup.next(),request,time);
-		ResponseCustomBody customBody = serializerImpl().readObject(response.bytes(), ResponseCustomBody.class);
-		return customBody.getResult();
+		RemotingTransporter response;
+		try {
+			
+			response = consumer.sendRpcRequestToProvider(channelGroup.next(),request,time);
+			ResponseCustomBody customBody = serializerImpl().readObject(response.bytes(), ResponseCustomBody.class);
+			return customBody.getResult();
+			
+		} catch (RemotingTimeoutException e) {
+			logger.warn("call remoting timeout [{}]",e.getMessage());
+			return null;
+		} catch (RemotingSendRequestException e) {
+			logger.warn("send request orror exception [{}]",e.getMessage());
+			return null;
+		} catch (InterruptedException e) {
+			logger.error("interrupted exception [{}]",e.getMessage());
+			return null;
+		}
 	}
 
 }

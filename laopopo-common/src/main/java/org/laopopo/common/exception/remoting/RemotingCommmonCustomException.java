@@ -1,5 +1,12 @@
 package org.laopopo.common.exception.remoting;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description
+ * @time
+ * @modifytime
+ */
 public class RemotingCommmonCustomException extends RemotingException {
 
 

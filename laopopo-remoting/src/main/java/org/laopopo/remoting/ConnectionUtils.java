@@ -11,6 +11,13 @@ import org.laopopo.common.rpc.RegisterMeta.Address;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description
+ * @time
+ * @modifytime
+ */
 public class ConnectionUtils {
 
 	private static final Logger logger = LoggerFactory.getLogger(ConnectionUtils.class);

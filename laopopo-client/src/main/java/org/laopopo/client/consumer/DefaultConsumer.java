@@ -35,19 +35,12 @@ public abstract class DefaultConsumer extends AbstractDefaultConsumer {
 	private static final Logger logger = LoggerFactory.getLogger(DefaultConsumer.class);
 
 	private NettyClientConfig registryClientConfig;
-
 	private NettyClientConfig providerClientConfig;
-
 	private ConsumerConfig consumerConfig;
-
 	protected NettyRemotingClient registryNettyRemotingClient;
-
 	protected NettyRemotingClient providerNettyRemotingClient;
-
 	private DefaultConsumerRegistry defaultConsumerRegistry;
-
 	private ConsumerManager consumerManager;
-	
 	private Channel registyChannel;
 
 	public DefaultConsumer(NettyClientConfig registryClientConfig, NettyClientConfig providerClientConfig, ConsumerConfig consumerConfig) {
@@ -69,8 +62,6 @@ public abstract class DefaultConsumer extends AbstractDefaultConsumer {
 		}
 		
 		this.providerNettyRemotingClient = new NettyRemotingClient(this.providerClientConfig);
-
-		
 
 	}
 

@@ -99,9 +99,9 @@ $(function() {
 										if ((8 * 1024) > row.requestSize) {
 											requestSizeView = row.requestSize + "字节";
 										} else if ((8 * 1024 * 1024) > row.requestSize) {
-											requestSizeView = row.requestSize / 8 / 1024 +"MB";
+											requestSizeView = (row.requestSize / 8 / 1024).toFixed(2) +"MB";
 										}else if((8 * 1024 * 1024 * 1024) > row.requestSize){
-											requestSizeView = row.requestSize / 8 / 1024 / 1024 +"GB";
+											requestSizeView = (row.requestSize / 8 / 1024 / 1024).toFixed(2) +"GB";
 										}
 										return requestSizeView;
 									},
@@ -112,9 +112,8 @@ $(function() {
 									align : 'center',
 									width : '290px',
 									formatter : function(value, row, index) {
-										var btnStr = "&nbsp;&nbsp;&nbsp;&nbsp;<button onclick=suitBookingCitys() class='btn btn-success btn-xs'><i class='fa fa-edit'></i><span >刷新</span></button>";
-										btnStr += "&nbsp;&nbsp;&nbsp;&nbsp;<button onclick=editRegional()  class='btn btn-warning btn-xs'><i class='fa fa-eye'></i><span>负载策略</span></button>";
-										btnStr += "&nbsp;&nbsp;&nbsp;&nbsp;<button onclick=openModel()  class='btn btn-warning btn-xs'><i class='fa fa-eye'></i><span>弹出</span></button>";
+										
+										var btnStr = "&nbsp;&nbsp;&nbsp;&nbsp;<button onclick=openModel('"+row.serviceName+"')  class='btn btn-warning btn-xs'><i class='fa fa-eye'></i><span>负载策略</span></button>"; 
 										return btnStr;
 									}
 								} ],
@@ -177,51 +176,28 @@ function detailFormatter(index, row) {
 								} else {
 									callSuccessRatio = "-";
 								}
-								html += '<tr><td>'
-										+ value[obj].host
-										+ ':'
-										+ value[obj].port
-										+ '</td>'
-										+ '<td>'
-										+ 50
-										+ '</td>'
-										+ '<td>'
-										+ isSupportDegrade
-										+ '</td>'
-										+ '<td>'
-										+ isDegradeService
-										+ '</td>'
-										+ '<td>'
-										+ reviewStr
-										+ '</td>'
-										+ '<td>'
-										+ value[obj].callCount
-										+ '</td>'
-										+ '<td>'
-										+ value[obj].failCount
-										+ '</td>'
-										+ '<td>'
-										+ callSuccessRatio
-										+ '</td>'
-										+ '<td><button class="btn btn-success btn-xs" onclick=forbidden("'
-										+ value[obj].host
-										+ '",'
-										+ value[obj].port
-										+ ',"'
-										+ row.serviceName
-										+ '")>禁用</button>'
-										+ '&nbsp;&nbsp;<button class="btn btn-success btn-xs" onclick=degradeService("'
-										+ value[obj].host
-										+ '",'
-										+ value[obj].port
-										+ ',"'
-										+ row.serviceName
-										+ '")>降级</button>'
-										+ '&nbsp;&nbsp;<button class="btn btn-success btn-xs" onclick=reviewService("'
-										+ value[obj].host + '",'
-										+ value[obj].port + ',"'
-										+ row.serviceName
-										+ '")>审核通过</button></td></tr>';
+								html += '<tr><td>'+ value[obj].host+ ':'+ value[obj].port+ '</td>'
+										+ '<td>'+ 50+ '</td>'+ '<td>'+ isSupportDegrade+ '</td>'
+										+ '<td>'+ isDegradeService+ '</td>'
+										+ '<td>'+ reviewStr+ '</td>'
+										+ '<td>'+ value[obj].callCount+ '</td>'
+										+ '<td>'+ value[obj].failCount+ '</td>'
+										+ '<td>'+ callSuccessRatio+ '</td>'
+										+ '<td><button class="btn btn-success btn-xs" onclick=forbidden("'+ value[obj].host+ '",'+ value[obj].port+ ',"'+ row.serviceName+ '")>禁用</button>'
+										+ '&nbsp;&nbsp;<button class="btn btn-success btn-xs" onclick=reviewService("'+ value[obj].host + '",'+ value[obj].port + ',"'+ row.serviceName+ '")>审核通过</button>';
+										if(value[obj].isSupportDegrade){
+											html += '&nbsp;&nbsp;<button class="btn btn-success btn-xs"  onclick=degradeService("'+ value[obj].host+ '",'+ value[obj].port+ ',"'+ row.serviceName+ '")>降级</button>';
+										    html += '&nbsp;&nbsp;<button class="btn btn-success btn-xs" onclick=reviewService("'+ value[obj].host + '",'+ value[obj].port + ',"'+ row.serviceName+ '")>自动降级</button>';
+										}else{
+											html += '&nbsp;&nbsp;<button class="btn btn-success btn-xs" disabled="disabled" onclick=degradeService("'+ value[obj].host+ '",'+ value[obj].port+ ',"'+ row.serviceName+ '")>降级</button>';
+											html += '&nbsp;&nbsp;<button class="btn btn-success btn-xs" disabled="disabled" onclick=reviewService("'+ value[obj].host + '",'+ value[obj].port + ',"'+ row.serviceName+ '")>自动降级</button>';
+										}
+										if(value[obj].isDegradeService){
+											html += '&nbsp;&nbsp;<button class="btn btn-success btn-xs" onclick=reviewService("'+ value[obj].host + '",'+ value[obj].port + ',"'+ row.serviceName+ '")>取消降级</button>';
+										}else{
+											html += '&nbsp;&nbsp;<button class="btn btn-success btn-xs" disabled="disabled" onclick=reviewService("'+ value[obj].host + '",'+ value[obj].port + ',"'+ row.serviceName+ '")>取消降级</button>';
+										}
+										html += '</td></tr>';
 							}
 						}
 					});
@@ -316,8 +292,12 @@ function getParams(params) {
 	};
 }
 
-function openModel() {
+function openModel(serviceName) {
 	$("#commonModal").load("model.html", function() {
+		$(this).find('#serviceName').append(serviceName);
+		$(this).find('#saveBtn').bind("click",function(){
+			console.info("hehe");
+		});
 		$(this).modal('show');
 	});
 }

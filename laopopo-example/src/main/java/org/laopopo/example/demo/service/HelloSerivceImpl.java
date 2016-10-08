@@ -19,7 +19,10 @@ public class HelloSerivceImpl implements HelloSerivce {
 				degradeServicePath="org.laopopo.example.demo.service.HelloServiceMock",
 				degradeServiceDesc="默认返回hello")
 	public String sayHello(String str) {
+		
+		//真实逻辑可能涉及到查库
 		return "hello "+ str;
+		
 	}
 
 }

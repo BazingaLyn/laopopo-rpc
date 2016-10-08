@@ -58,7 +58,7 @@ public class MonitorCoreController {
 		Map<String, Object> resultMap = new HashMap<String, Object>();
 
 		Boolean operationFlag = false;
-
+		
 		// 禁用
 		if (managerRPC.getManagerType() == 1) {
 			operationFlag = kaleidoscopeInfo.notifyReviewService(managerRPC.getHost(), managerRPC.getPort(), managerRPC.getServiceName(),ServiceReviewState.FORBIDDEN);

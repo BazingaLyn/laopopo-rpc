@@ -15,7 +15,6 @@ public class ConsumerTest {
 	
 	public static void main(String[] args) throws Exception {
 		
-
 		ConsumerClient client = new ConsumerClient();
 
 		client.start();
@@ -31,7 +30,6 @@ public class ConsumerTest {
 			System.out.println(str);
 			
 		}
-		
 		
 	}
 

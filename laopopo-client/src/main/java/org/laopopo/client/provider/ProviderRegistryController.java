@@ -1,6 +1,12 @@
 package org.laopopo.client.provider;
 
+import java.util.List;
+
+import org.laopopo.client.metrics.ServiceMeterManager;
+import org.laopopo.client.provider.DefaultServiceProviderContainer.CurrentServiceState;
 import org.laopopo.client.provider.flow.control.ServiceFlowControllerManager;
+import org.laopopo.client.provider.model.ServiceWrapper;
+import org.laopopo.common.utils.Pair;
 
 
 /**
@@ -29,6 +35,37 @@ public class ProviderRegistryController {
 		localServerWrapperManager = new LocalServerWrapperManager(this);
 		registryController = new RegistryController(defaultProvider);
 		providerMonitorController = new ProviderMonitorController(defaultProvider);
+	}
+	
+	/**
+	 * 检查符合自动降级的服务
+	 */
+	public void checkAutoDegrade() {
+
+		//获取到所有需要降级的服务名
+		List<Pair<String, CurrentServiceState>> needDegradeServices = providerContainer.getNeedAutoDegradeService();
+
+		//如果当前实例需要降级的服务列表不为空的情况下，循环每个列表	
+		if (!needDegradeServices.isEmpty()) {
+			
+			for (Pair<String, CurrentServiceState> pair : needDegradeServices) {
+
+				//服务名
+				String serviceName = pair.getKey();
+				//最低成功率
+				Integer minSuccessRate = pair.getValue().getMinSuccecssRate();
+				//
+				Integer realSuccessRate = ServiceMeterManager.calcServiceSuccessRate(serviceName);
+				if (minSuccessRate > realSuccessRate) {
+					final Pair<CurrentServiceState, ServiceWrapper> _pair = this.defaultProvider.getProviderController().getProviderContainer()
+							.lookupService(serviceName);
+					CurrentServiceState currentServiceState = _pair.getKey();
+					if (!currentServiceState.getHasDegrade().get()) {
+						currentServiceState.getHasDegrade().set(true);
+					}
+				}
+			}
+		}
 	}
 
 	public DefaultProvider getDefaultProvider() {
@@ -74,5 +111,6 @@ public class ProviderRegistryController {
 	public void setServiceFlowControllerManager(ServiceFlowControllerManager serviceFlowControllerManager) {
 		this.serviceFlowControllerManager = serviceFlowControllerManager;
 	}
+	
 
 }

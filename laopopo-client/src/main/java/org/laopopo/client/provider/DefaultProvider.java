@@ -127,14 +127,14 @@ public class DefaultProvider implements Provider {
 			}
 		}, 1, 1, TimeUnit.MINUTES);
 
-//		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
-//
-//			@Override
-//			public void run() {
-//				logger.info("ready prepare send Report");
-//				ServiceMeterManager.scheduledSendReport();
-//			}
-//		}, 3, 60, TimeUnit.SECONDS);
+		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
+
+			@Override
+			public void run() {
+				logger.info("ready prepare send Report");
+				DefaultProvider.this.providerController.getServiceFlowControllerManager().clearAllServiceNextMinuteCallCount();
+			}
+		}, 5, 45, TimeUnit.SECONDS);
 
 		// 如果监控中心的地址不是null，则需要定时发送统计信息
 		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
@@ -156,11 +156,22 @@ public class DefaultProvider implements Provider {
 				}
 			}
 		}, 30, 60, TimeUnit.SECONDS);
+		
+		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
+
+			@Override
+			public void run() {
+				//检查是否有服务需要自动降级
+				DefaultProvider.this.providerController.checkAutoDegrade();
+			}
+		}, 30, 60, TimeUnit.SECONDS);
 	}
 
 	private void registerProcessor() {
+		DefaultProviderRegistryProcessor defaultProviderRegistryProcessor = new DefaultProviderRegistryProcessor(this);
 		// provider端作为client端去连接registry注册中心的处理器
-		this.nettyRemotingClient.registerProcessor(LaopopoProtocol.DEGRADE_SERVICE, new DefaultProviderRegistryProcessor(this), null);
+		this.nettyRemotingClient.registerProcessor(LaopopoProtocol.DEGRADE_SERVICE, defaultProviderRegistryProcessor, null);
+		this.nettyRemotingClient.registerProcessor(LaopopoProtocol.AUTO_DEGRADE_SERVICE, defaultProviderRegistryProcessor, null);
 		// provider端连接registry链接inactive的时候要进行的操作(设置registry的状态为不健康，告之registry重新发送服务注册信息)
 		this.nettyRemotingClient.registerChannelInactiveProcessor(new DefaultProviderInactiveProcessor(this), null);
 		// provider端作为netty的server端去等待调用者连接的处理器，此处理器只处理RPC请求
@@ -266,16 +277,16 @@ public class DefaultProvider implements Provider {
 	public void initMonitorChannel() throws InterruptedException {
 		monitorChannel = this.connectionToMonitor();
 	}
-
+	
+	
 	/**
-	 * 处理注册中心发送过来的服务降级的请求，请求体是ServiceName
-	 * 
+	 * 处理用户发送过来的降级请求
 	 * @param request
 	 * @param channel
+	 * @param degradeService
 	 * @return
 	 */
-	public RemotingTransporter handlerDegradeService(RemotingTransporter request, Channel channel) {
-
+	public RemotingTransporter handlerDegradeServiceRequest(RemotingTransporter request, Channel channel, byte degradeService) {
 		// 默认的ack返回体
 		AckCustomBody ackCustomBody = new AckCustomBody(request.getOpaque(), false);
 		RemotingTransporter remotingTransporter = RemotingTransporter.createResponseTransporter(LaopopoProtocol.ACK, ackCustomBody, request.getOpaque());
@@ -306,12 +317,18 @@ public class DefaultProvider implements Provider {
 			final Pair<CurrentServiceState, ServiceWrapper> pair = DefaultProvider.this.getProviderController().getProviderContainer()
 					.lookupService(serviceName);
 			CurrentServiceState currentServiceState = pair.getKey();
-			// 如果已经降级了，则直接返回成功
-			currentServiceState.getHasDegrade().set(!currentServiceState.getHasDegrade().get());
+			
+			if(degradeService == LaopopoProtocol.DEGRADE_SERVICE){
+				// 如果已经降级了，则直接返回成功
+				currentServiceState.getHasDegrade().set(!currentServiceState.getHasDegrade().get());
+			}else if(degradeService == LaopopoProtocol.AUTO_DEGRADE_SERVICE){
+				currentServiceState.getIsAutoDegrade().set(true);
+			}
 			ackCustomBody.setSuccess(true);
 		}
 		return remotingTransporter;
 	}
+
 
 	private Channel connectionToMonitor() throws InterruptedException {
 		return this.nettyRemotingClient.createChannel(monitorAddress);
@@ -372,5 +389,6 @@ public class DefaultProvider implements Provider {
 	public void setGlobalPublishService(ConcurrentMap<String, PublishServiceCustomBody> globalPublishService) {
 		this.globalPublishService = globalPublishService;
 	}
+
 
 }
