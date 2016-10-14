@@ -54,9 +54,11 @@ public class ProviderRegistryController {
 				String serviceName = pair.getKey();
 				//最低成功率
 				Integer minSuccessRate = pair.getValue().getMinSuccecssRate();
-				//
+				//调用的实际成功率
 				Integer realSuccessRate = ServiceMeterManager.calcServiceSuccessRate(serviceName);
+				
 				if (minSuccessRate > realSuccessRate) {
+					
 					final Pair<CurrentServiceState, ServiceWrapper> _pair = this.defaultProvider.getProviderController().getProviderContainer()
 							.lookupService(serviceName);
 					CurrentServiceState currentServiceState = _pair.getKey();

@@ -8,6 +8,7 @@ import java.util.Map;
 
 import org.laopopo.client.annotation.RPConsumer;
 import org.laopopo.client.consumer.Consumer;
+import org.laopopo.common.loadbalance.LoadBalanceStrategy;
 import org.laopopo.common.utils.Proxies;
 import org.laopopo.common.utils.UnresolvedAddress;
 
@@ -26,6 +27,8 @@ public class ProxyFactory<T> {
 	private List<UnresolvedAddress> addresses;		        //该服务的直连url集合
 	private long timeoutMillis;								//接口整理超时时间
     private Map<String, Long> methodsSpecialTimeoutMillis;  //每个方法特定的超时时间
+    private LoadBalanceStrategy balanceStrategy;			//负载均衡的策略
+    
     
 	public static <I> ProxyFactory<I> factory(Class<I> interfaceClass) {
         ProxyFactory<I> factory = new ProxyFactory<>(interfaceClass);
@@ -62,6 +65,18 @@ public class ProxyFactory<T> {
         Collections.addAll(this.addresses, addresses);
         return this;
     }
+	
+	
+	/**
+	 * 设置直连的负载均衡的策略
+	 * @param balanceStrategy
+	 * @return
+	 */
+	public ProxyFactory<T> loadBalance(LoadBalanceStrategy balanceStrategy){
+		this.balanceStrategy = balanceStrategy;
+		return this;
+	}
+	
 	
 	/**
 	 * 
@@ -106,7 +121,7 @@ public class ProxyFactory<T> {
 			throw new UnsupportedOperationException("the interfaceClass no any annotation [@RPConsumer]");
 		}
 		
-		Object handler = new SynInvoker(consumer,timeoutMillis,methodsSpecialTimeoutMillis);
+		Object handler = new SynInvoker(consumer, timeoutMillis, methodsSpecialTimeoutMillis, balanceStrategy);
 		
 		return Proxies.getDefault().newProxy(interfaceClass, handler);
 	}

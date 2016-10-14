@@ -91,15 +91,13 @@ public enum LoadBalanceStrategies {
 				return arrayList.get(0);
 			}
 			
-			ChannelGroup channelGroup = arrayList.get(position.getAndIncrement() / count);
+			int index = position.getAndIncrement() % count;
+			ChannelGroup channelGroup = arrayList.get(index);
 			
 			return channelGroup;
 
 		}
-		
-		
 	});
-	
 	
 	private final LoadBalance loadBalance;
 	
@@ -116,7 +114,5 @@ public enum LoadBalanceStrategies {
 		
 		ChannelGroup select(CopyOnWriteArrayList<ChannelGroup> arrayList);
 	}
-	
-	
 
 }

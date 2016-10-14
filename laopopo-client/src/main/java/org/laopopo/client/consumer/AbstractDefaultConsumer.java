@@ -78,18 +78,24 @@ public abstract class AbstractDefaultConsumer implements Consumer {
 	}
 	
 	@Override
-	public ChannelGroup loadBalance(String serviceName) {
+	public ChannelGroup loadBalance(String serviceName,LoadBalanceStrategy directBalanceStrategy) {
 		LoadBalanceStrategy balanceStrategy = loadConcurrentHashMap.get(serviceName);
 		
 		CopyOnWriteArrayList<ChannelGroup> list = groups.get(serviceName);
 		if(balanceStrategy == null){
-			balanceStrategy = LoadBalanceStrategy.WEIGHTINGRANDOM;
+			
+			if(directBalanceStrategy == null){
+				balanceStrategy = LoadBalanceStrategy.WEIGHTINGRANDOM;
+			}else{
+				balanceStrategy = directBalanceStrategy;
+			}
 		}
 		
 		if(null == list || list.size() == 0){
 			return null;
 		}
 		switch (balanceStrategy) {
+		
 			case RANDOM:
 				return LoadBalanceStrategies.RANDOMSTRATEGIES.select(list);
 			case WEIGHTINGRANDOM:

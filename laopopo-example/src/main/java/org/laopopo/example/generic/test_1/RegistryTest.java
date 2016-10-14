@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentMap;
 import org.laopopo.base.registry.DefaultRegistryServer;
 import org.laopopo.base.registry.RegistryServerConfig;
 import org.laopopo.common.rpc.RegisterMeta;
+import org.laopopo.common.rpc.ServiceReviewState;
 import org.laopopo.common.rpc.RegisterMeta.Address;
 import org.laopopo.remoting.netty.NettyServerConfig;
 import org.slf4j.Logger;
@@ -26,6 +27,7 @@ public class RegistryTest {
         
 		NettyServerConfig config = new NettyServerConfig();
 		RegistryServerConfig registryServerConfig = new RegistryServerConfig();
+		registryServerConfig.setDefaultReviewState(ServiceReviewState.PASS_REVIEW);
 		//注册中心的端口号
 		config.setListenPort(18010);
 		defaultRegistryServer = new DefaultRegistryServer(config,registryServerConfig);

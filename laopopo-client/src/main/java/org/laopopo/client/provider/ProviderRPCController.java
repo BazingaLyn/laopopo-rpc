@@ -61,8 +61,6 @@ public class ProviderRPCController {
 			request.setCustomHeader(body);
 			serviceName = body.getServiceName();
 			
-			
-			ServiceMeterManager.incrementCallTimes(serviceName);
 			ServiceMeterManager.incrementRequestSize(serviceName, requestSize);
 			
 		} catch (Exception e) {

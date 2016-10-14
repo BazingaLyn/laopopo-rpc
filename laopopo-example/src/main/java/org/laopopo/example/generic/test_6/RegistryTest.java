@@ -1,4 +1,4 @@
-package org.laopopo.example.generic.test_3;
+package org.laopopo.example.generic.test_6;
 
 import io.netty.util.internal.ConcurrentSet;
 
@@ -6,9 +6,10 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.laopopo.base.registry.DefaultRegistryServer;
 import org.laopopo.base.registry.RegistryServerConfig;
+import org.laopopo.common.loadbalance.LoadBalanceStrategy;
 import org.laopopo.common.rpc.RegisterMeta;
-import org.laopopo.common.rpc.ServiceReviewState;
 import org.laopopo.common.rpc.RegisterMeta.Address;
+import org.laopopo.common.rpc.ServiceReviewState;
 import org.laopopo.remoting.netty.NettyServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +28,8 @@ public class RegistryTest {
         
 		NettyServerConfig config = new NettyServerConfig();
 		RegistryServerConfig registryServerConfig = new RegistryServerConfig();
+		
+		registryServerConfig.setDefaultLoadBalanceStrategy(LoadBalanceStrategy.RANDOM);
 		registryServerConfig.setDefaultReviewState(ServiceReviewState.PASS_REVIEW);
 		//注册中心的端口号
 		config.setListenPort(18010);

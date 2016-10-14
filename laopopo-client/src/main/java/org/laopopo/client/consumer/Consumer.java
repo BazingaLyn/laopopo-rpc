@@ -70,9 +70,10 @@ public interface Consumer {
 	/**
 	 * 根据一个服务名，匹配用户给这个服务设定的负载均衡策略，根据这个负载均衡算法去找到这个服务对应的与提供者的Channel
 	 * @param serviceName
+	 * @param _balanceStrategy 
 	 * @return
 	 */
-	ChannelGroup loadBalance(String serviceName);
+	ChannelGroup loadBalance(String serviceName, LoadBalanceStrategy _balanceStrategy);
 	
 	/**
 	 * 当注册中心告之某个服务多了一个提供者之后，我们需要将其更新

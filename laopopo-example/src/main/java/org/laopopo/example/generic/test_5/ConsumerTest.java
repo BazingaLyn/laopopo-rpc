@@ -23,12 +23,11 @@ public class ConsumerTest {
 		
 		HelloService helloService = ProxyFactory.factory(HelloService.class).consumer(client).addProviderAddress(addresses).timeoutMillis(3000l).newProxyInstance();
 		
-		for(int index = 0;index < 10000;index++){
+		for(int index = 1;index < 45;index++){
 			
 			String str = helloService.sayHello("Lyncc");
-			
+			System.out.println("当前调用的次数是：" + index);
 			System.out.println(str);
-			
 		}
 		
 	}

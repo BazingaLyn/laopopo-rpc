@@ -15,7 +15,6 @@ public class ConsumerTest {
 	
 	public static void main(String[] args) throws Exception {
 		
-
 		ConsumerClient client = new ConsumerClient();
 
 		client.start();
@@ -24,13 +23,13 @@ public class ConsumerTest {
 		
 		HelloService helloService = ProxyFactory.factory(HelloService.class).consumer(client).addProviderAddress(addresses).timeoutMillis(3000l).newProxyInstance();
 		
-		for(int index = 0;index < 10000;index++){
+		for(int i = 0; i < 10000;i++){
 			
 			String str = helloService.sayHello("Lyncc");
-			
 			System.out.println(str);
-			
 		}
+		
+			
 		
 		
 	}

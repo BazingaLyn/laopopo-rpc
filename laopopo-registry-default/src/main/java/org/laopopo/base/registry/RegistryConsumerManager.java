@@ -71,6 +71,13 @@ public class RegistryConsumerManager {
 
 	}
 
+	/**
+	 * 通知订阅者某个服务取消
+	 * @param meta
+	 * @throws RemotingSendRequestException
+	 * @throws RemotingTimeoutException
+	 * @throws InterruptedException
+	 */
 	public void notifyMacthedSubscriberCancel(final RegisterMeta meta) throws RemotingSendRequestException, RemotingTimeoutException, InterruptedException {
 
 		// 构建订阅通知的主体传输对象
@@ -128,10 +135,12 @@ public class RegistryConsumerManager {
 	 * @param loadBalanceStrategy 
 	 */
 	private void buildSubcribeResultCustomBody(RegisterMeta meta, SubcribeResultCustomBody subcribeResultCustomBody, LoadBalanceStrategy loadBalanceStrategy) {
+		
+		LoadBalanceStrategy defaultBalanceStrategy = defaultRegistryServer.getRegistryServerConfig().getDefaultLoadBalanceStrategy();
 		List<RegisterMeta> registerMetas = new ArrayList<RegisterMeta>();
 
 		registerMetas.add(meta);
-		subcribeResultCustomBody.setLoadBalanceStrategy(null == loadBalanceStrategy ? LoadBalanceStrategy.WEIGHTINGRANDOM : loadBalanceStrategy);
+		subcribeResultCustomBody.setLoadBalanceStrategy(null == loadBalanceStrategy ? defaultBalanceStrategy : loadBalanceStrategy);
 		subcribeResultCustomBody.setRegisterMeta(registerMetas);
 	}
 

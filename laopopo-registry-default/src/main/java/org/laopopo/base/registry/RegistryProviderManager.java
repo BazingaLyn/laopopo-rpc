@@ -68,9 +68,9 @@ public class RegistryProviderManager implements RegistryProviderServer {
 	private final ConcurrentMap<String, ConcurrentSet<Channel>> globalConsumerMetaMap = new ConcurrentHashMap<String, ConcurrentSet<Channel>>();
 	// 提供者某个地址对应的channel
 	private final ConcurrentMap<Address, Channel> globalProviderChannelMetaMap = new ConcurrentHashMap<RegisterMeta.Address, Channel>();
-	
+	//每个服务的历史记录
 	private final ConcurrentMap<String, RegistryPersistRecord> historyRecords = new ConcurrentHashMap<String, RegistryPersistRecord>();
-
+    //每个服务对应的负载策略
 	private final ConcurrentMap<String, LoadBalanceStrategy> globalServiceLoadBalance = new ConcurrentHashMap<String, LoadBalanceStrategy>();
 
 	public RegistryProviderManager(DefaultRegistryServer defaultRegistryServer) {
@@ -134,7 +134,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		ConcurrentMap<Address, RegisterMeta> maps = this.getRegisterMeta(serviceName);
 
 		synchronized (globalRegisterInfoMap) {
-			
+			//历史记录中的所有服务的持久化的信息记录
 			ConcurrentMap<String, RegistryPersistRecord> concurrentMap = historyRecords; 
 
 			// 获取到这个地址可能以前注册过的注册信息
@@ -144,21 +144,22 @@ public class RegistryProviderManager implements RegistryProviderServer {
 			if (null == existRegiserMeta) {
 				
 				RegistryPersistRecord persistRecord = concurrentMap.get(serviceName);
-				//
-				if(null == persistRecord){
+				//如果历史记录中没有记录该信息，也就说持久化中没有记录到该信息的时候，就需要构造默认的持久化信息
+				if(null == persistRecord ||!isContainChildrenInfo(persistRecord,meta.getAddress())){
 					
 					persistRecord = new RegistryPersistRecord();
-					persistRecord.setServiceName(serviceName);
-					persistRecord.setBalanceStrategy(LoadBalanceStrategy.WEIGHTINGRANDOM);
+					persistRecord.setServiceName(serviceName);															 //持久化的服务名
+					persistRecord.setBalanceStrategy(LoadBalanceStrategy.WEIGHTINGRANDOM);  							 //默认的负载均衡的策略
 					
 					PersistProviderInfo providerInfo = new PersistProviderInfo();
-					providerInfo.setAddress(meta.getAddress());
-					providerInfo.setIsReviewed(ServiceReviewState.HAS_NOT_REVIEWED);
+					providerInfo.setAddress(meta.getAddress());															 //服务提供者的地址
+					providerInfo.setIsReviewed(defaultRegistryServer.getRegistryServerConfig().getDefaultReviewState()); //服务默认是未审核
 					persistRecord.getProviderInfos().add(providerInfo);
 					
 					concurrentMap.put(serviceName, persistRecord);
 				}
 				
+				//循环该服务的所有服务提供者实例的信息，获取到当前实例的审核状态，设置好meta的审核信息
 				for(PersistProviderInfo providerInfo:persistRecord.getProviderInfos()){
 					
 					if(providerInfo.getAddress().equals(meta.getAddress())){
@@ -172,7 +173,8 @@ public class RegistryProviderManager implements RegistryProviderServer {
 
 			this.getServiceMeta(meta.getAddress()).add(serviceName);
 			
-			LoadBalanceStrategy defaultBalanceStrategy = LoadBalanceStrategy.WEIGHTINGRANDOM;
+			//默认的负载均衡的策略
+			LoadBalanceStrategy defaultBalanceStrategy = defaultRegistryServer.getRegistryServerConfig().getDefaultLoadBalanceStrategy();
 			
 			if(null != concurrentMap.get(serviceName)){
 				
@@ -195,9 +197,22 @@ public class RegistryProviderManager implements RegistryProviderServer {
 			}
 		}
 
+		//将地址与该channel绑定好，方便其他地方使用
 		globalProviderChannelMetaMap.put(meta.getAddress(), channel);
 
 		return responseTransporter;
+	}
+
+	private boolean isContainChildrenInfo(RegistryPersistRecord persistRecord, Address address) {
+		List<PersistProviderInfo> infos = persistRecord.getProviderInfos();
+		if(null != infos && !infos.isEmpty()){
+			for(PersistProviderInfo info : infos){
+				if(info.getAddress().equals(address)){
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	public RemotingTransporter handleMetricsService(String metricsServiceName, long requestId) {
@@ -359,6 +374,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 		globalConsumerMetaMap.put(serviceName, channels);
 		
 
+		//将订阅的channel上打上tag标记，表示该channel订阅的服务
 		attachSubscribeEventOnChannel(serviceName, channel);
 
 		ConcurrentMap<Address, RegisterMeta> maps = this.getRegisterMeta(serviceName);
@@ -367,6 +383,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 			return responseTransporter;
 		}
 
+		//构建返回的订阅信息的对象
 		buildSubcribeResultCustomBody(maps, subcribeResultCustomBody);
 
 		return responseTransporter;
@@ -387,6 +404,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 			logger.info("Cancel publish {} on channel{}.", meta, channel);
 		}
 
+		//将其channel上打上的标记移除掉
 		attachPublishCancelEventOnChannel(meta, channel);
 
 		final String serviceMeta = meta.getServiceName();
@@ -403,7 +421,7 @@ public class RegistryProviderManager implements RegistryProviderServer {
 			if (data != null) {
 				this.getServiceMeta(address).remove(serviceMeta);
 
-				if (data.getIsReviewed() == ServiceReviewState.PASS_REVIEW)
+				if (data.getIsReviewed() == ServiceReviewState.PASS_REVIEW )
 					this.defaultRegistryServer.getConsumerManager().notifyMacthedSubscriberCancel(meta);
 			}
 		}

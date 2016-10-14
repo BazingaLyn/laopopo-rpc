@@ -56,7 +56,5 @@ public class DefaultRegistryChannelInactiveProcessor implements NettyChannelInac
             }
             this.defaultRegistryServer.getProviderManager().handlePublishCancel(meta, channel);
         }
-
 	}
-
 }

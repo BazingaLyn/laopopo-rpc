@@ -49,7 +49,8 @@ public class DefaultRegistryServer implements RegistryServer {
 	private ExecutorService remotingChannelInactiveExecutor; //channel inactive的线程执行器
 	
 	//定时任务
-    private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("registry-timer"));
+    private final ScheduledExecutorService scheduledExecutorService = Executors
+    		.newSingleThreadScheduledExecutor(new NamedThreadFactory("registry-timer"));
 	
     /**
      * 

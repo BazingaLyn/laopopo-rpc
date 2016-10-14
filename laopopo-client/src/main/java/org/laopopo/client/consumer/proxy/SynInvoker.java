@@ -15,6 +15,7 @@ import org.laopopo.client.consumer.Consumer;
 import org.laopopo.common.exception.remoting.RemotingSendRequestException;
 import org.laopopo.common.exception.remoting.RemotingTimeoutException;
 import org.laopopo.common.exception.rpc.NoServiceException;
+import org.laopopo.common.loadbalance.LoadBalanceStrategy;
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.common.transport.body.RequestCustomBody;
 import org.laopopo.common.transport.body.ResponseCustomBody;
@@ -36,26 +37,25 @@ public class SynInvoker {
 	private static final Logger logger = LoggerFactory.getLogger(SynInvoker.class);
 
 	private Consumer consumer;
-	
 	private long timeoutMillis;
-	
 	private Map<String, Long> methodsSpecialTimeoutMillis;
+	private LoadBalanceStrategy balanceStrategy;
 	
 
-	public SynInvoker(Consumer consumer, long timeoutMillis, Map<String, Long> methodsSpecialTimeoutMillis) {
+	public SynInvoker(Consumer consumer, long timeoutMillis, Map<String, Long> methodsSpecialTimeoutMillis, LoadBalanceStrategy balanceStrategy) {
 		this.consumer = consumer;
 		this.timeoutMillis = timeoutMillis;
 		this.methodsSpecialTimeoutMillis = methodsSpecialTimeoutMillis;
+		this.balanceStrategy = balanceStrategy;
 	}
 
 	@RuntimeType
 	public Object invoke(@Origin Method method, @AllArguments @RuntimeType Object[] args) {
 		
 		RPConsumer rpcConsumer = method.getAnnotation(RPConsumer.class);
-		
 		String serviceName = rpcConsumer.serviceName();
-		
-		ChannelGroup channelGroup = consumer.loadBalance(serviceName);
+		LoadBalanceStrategy _balanceStrategy = balanceStrategy;
+		ChannelGroup channelGroup = consumer.loadBalance(serviceName,_balanceStrategy);
 		
 		if (channelGroup == null || channelGroup.size() == 0) {
 			//如果有channelGroup但是channel中却没有active的Channel的有可能是用户通过直连的方式去调用，我们需要去根据远程的地址去初始化channel
