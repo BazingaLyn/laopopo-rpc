@@ -11,4 +11,20 @@
   <name>laopopo-spring-support</name>
   <url>http://maven.apache.org</url>
   
+  <dependencies>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>laopopo-remoting</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>laopopo-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+  
 </project>

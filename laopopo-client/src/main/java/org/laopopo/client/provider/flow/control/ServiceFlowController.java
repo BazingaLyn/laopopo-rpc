@@ -4,6 +4,13 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.laopopo.common.utils.SystemClock;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description
+ * @time
+ * @modifytime
+ */
 public class ServiceFlowController {
 
 	private AtomicLong[] metricses = new AtomicLong[] { new AtomicLong(0), new AtomicLong(0), new AtomicLong(0) };
@@ -15,6 +22,15 @@ public class ServiceFlowController {
 
 		AtomicLong atomicLong = metricses[index];
 		return atomicLong.incrementAndGet();
+
+	}
+	
+	public long getCurrentCallCountAtLastMinute() {
+
+		long currentTime = SystemClock.millisClock().now();
+		int index = (int) (((currentTime / 60000)) % 3);
+		AtomicLong atomicLong = metricses[index];
+		return atomicLong.get();
 
 	}
 

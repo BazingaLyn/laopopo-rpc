@@ -127,6 +127,7 @@ public class DefaultProvider implements Provider {
 			}
 		}, 1, 1, TimeUnit.MINUTES);
 
+		//清理所有的服务的单位时间的失效过期的统计信息
 		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
 			@Override
@@ -145,6 +146,7 @@ public class DefaultProvider implements Provider {
 			}
 		}, 5, 60, TimeUnit.SECONDS);
 
+		//每隔60s去校验与monitor端的channel是否健康，如果不健康，或者inactive的时候，则重新去链接
 		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
 			@Override
@@ -157,11 +159,12 @@ public class DefaultProvider implements Provider {
 			}
 		}, 30, 60, TimeUnit.SECONDS);
 		
+		
+		//检查是否有服务需要自动降级
 		this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
 			@Override
 			public void run() {
-				//检查是否有服务需要自动降级
 				DefaultProvider.this.providerController.checkAutoDegrade();
 			}
 		}, 30, 60, TimeUnit.SECONDS);
@@ -224,6 +227,7 @@ public class DefaultProvider implements Provider {
 	@Override
 	public void start() throws InterruptedException, RemotingException {
 
+		logger.info("######### provider starting..... ########");
 		// 编织服务
 		this.publishRemotingTransporters = providerController.getLocalServerWrapperManager().wrapperRegisterInfo(this.getExposePort(), this.obj);
 
@@ -237,7 +241,7 @@ public class DefaultProvider implements Provider {
 		try {
 			// 发布任务
 			this.publishedAndStartProvider();
-			logger.info("provider start successfully");
+			logger.info("######### provider start successfully..... ########");
 		} catch (Exception e) {
 			logger.error("publish service to registry failed [{}]",e.getMessage());
 		}
@@ -258,7 +262,7 @@ public class DefaultProvider implements Provider {
 		if (monitorAddress != null) {
 			initMonitorChannel();
 		}
-
+		
 	}
 
 	private void initGlobalService() {

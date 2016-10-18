@@ -12,6 +12,7 @@ import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.remoting.model.RemotingTransporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xerial.snappy.Snappy;
 
 /**
  * 
@@ -50,11 +51,17 @@ public class RemotingTransporterDecoder extends ReplayingDecoder<RemotingTranspo
 			checkpoint(State.HEADER_BODY_LENGTH);
 		case HEADER_BODY_LENGTH:
 			header.bodyLength(in.readInt()); // 消息体长度
+			checkpoint(State.HEADER_COMPRESS);
+		case HEADER_COMPRESS:
+			header.setCompress(in.readByte()); // 消息是否压缩
 			checkpoint(State.BODY);
 		case BODY:
 				int bodyLength = checkBodyLength(header.bodyLength());
 				byte[] bytes = new byte[bodyLength];
 				in.readBytes(bytes);
+				if(header.compress() == LaopopoProtocol.COMPRESS){
+					bytes = Snappy.uncompress(bytes);
+				}
 				out.add(RemotingTransporter.newInstance(header.id(), header.sign(),header.type(), bytes));
 				break;
 		default:
@@ -78,7 +85,7 @@ public class RemotingTransporterDecoder extends ReplayingDecoder<RemotingTranspo
 	}
 
 	enum State {
-		HEADER_MAGIC, HEADER_TYPE, HEADER_SIGN, HEADER_ID, HEADER_BODY_LENGTH, BODY
+		HEADER_MAGIC, HEADER_TYPE, HEADER_SIGN, HEADER_ID, HEADER_BODY_LENGTH,HEADER_COMPRESS, BODY
 	}
 
 }

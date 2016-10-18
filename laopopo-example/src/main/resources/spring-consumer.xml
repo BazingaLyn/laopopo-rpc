@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+
+   <bean id="registryNettyClientConfig" class="org.laopopo.remoting.netty.NettyClientConfig">
+      <property name="defaultAddress" value="127.0.0.1:18010"/>
+   </bean>
+   
+   <bean id="provideClientConfig" class="org.laopopo.remoting.netty.NettyClientConfig"/>
+   <bean id="consumerConfig" class="org.laopopo.client.consumer.ConsumerConfig"/>
+   
+
+   <bean id="consumerClient" class="org.laopopo.client.consumer.ConsumerClient" init-method="start">
+      <constructor-arg name="registryClientConfig" ref="registryNettyClientConfig"/>
+      <constructor-arg name="providerClientConfig" ref="provideClientConfig"/>
+      <constructor-arg name="consumerConfig" ref="consumerConfig"/>   
+   </bean>
+   
+   <bean class="org.laopopo.spring.support.LaopopoSpringConsumerBean">
+     <property name="consumerClient" ref="consumerClient"/>
+     <property name="subscribeServiceName" value="LAOPOPO.TEST.SAYHELLO"/>
+     <property name="rpcClass" value="org.laopopo.example.spring.HelloService"/>
+   </bean>
+   
+   
+   
+
+
+</beans>

@@ -62,6 +62,7 @@ public class ProviderRPCController {
 			serviceName = body.getServiceName();
 			
 			ServiceMeterManager.incrementRequestSize(serviceName, requestSize);
+			ServiceMeterManager.incrementCallTimes(serviceName);
 			
 		} catch (Exception e) {
 			rejected(BAD_REQUEST, channel, request,serviceName);
@@ -75,11 +76,15 @@ public class ProviderRPCController {
         }
 		
 		// app flow control
-        ServiceFlowControllerManager serviceFlowControllerManager = defaultProvider.getProviderController().getServiceFlowControllerManager();
-        if (!serviceFlowControllerManager.isAllow(serviceName)) {
-            rejected(APP_FLOW_CONTROL,channel, request,serviceName);
-            return;
-        }
+		if(pair.getValue().isFlowController()){
+			
+	        ServiceFlowControllerManager serviceFlowControllerManager = defaultProvider.getProviderController().getServiceFlowControllerManager();
+	        if (!serviceFlowControllerManager.isAllow(serviceName)) {
+	            rejected(APP_FLOW_CONTROL,channel, request,serviceName);
+	            return;
+	        }
+		}
+		
         
         process(pair,request,channel,serviceName,body.getTimestamp());
 	}
@@ -129,7 +134,6 @@ public class ProviderRPCController {
 				
 				long elapsed = SystemClock.millisClock().now() - beginTime;
 				
-				logger.info("call time is [{}]  and minus [{}]",beginTime,elapsed);
 				if (future.isSuccess()) {
 					
 					ServiceMeterManager.incrementTotalTime(serviceName, elapsed);
@@ -144,7 +148,7 @@ public class ProviderRPCController {
 	private void rejected(Status status, Channel channel, final RemotingTransporter request,String serviceName) {
 
 		if(null != serviceName){
-			ServiceMeterManager.incrementCallTimes(serviceName);
+			ServiceMeterManager.incrementFailTimes(serviceName);
 		}
 		ResultWrapper result = new ResultWrapper();
 		switch (status) {

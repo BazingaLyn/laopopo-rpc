@@ -22,6 +22,7 @@ public class PublishServiceCustomBody implements CommonCustomBody {
 	private volatile int weight;		    // 服务的权重
 	private volatile int connCount;         // 服务的权重
 	private long maxCallCountInMinute;      // 单位时间内调用的最大次数
+	private boolean isFlowController;       // 是否进行限流控制
 	
 
 	@Override
@@ -100,6 +101,14 @@ public class PublishServiceCustomBody implements CommonCustomBody {
 		this.connCount = connCount;
 	}
 
+	public boolean isFlowController() {
+		return isFlowController;
+	}
+
+	public void setFlowController(boolean isFlowController) {
+		this.isFlowController = isFlowController;
+	}
+
 	public long getMaxCallCountInMinute() {
 		return maxCallCountInMinute;
 	}
@@ -112,7 +121,8 @@ public class PublishServiceCustomBody implements CommonCustomBody {
 	public String toString() {
 		return "PublishServiceCustomBody [host=" + host + ", port=" + port + ", serviceProviderName=" + serviceProviderName + ", isVIPService=" + isVIPService
 				+ ", isSupportDegradeService=" + isSupportDegradeService + ", degradeServicePath=" + degradeServicePath + ", degradeServiceDesc="
-				+ degradeServiceDesc + ", weight=" + weight + ", connCount=" + connCount + ", maxCallCountInMinute=" + maxCallCountInMinute + "]";
+				+ degradeServiceDesc + ", weight=" + weight + ", connCount=" + connCount + ", maxCallCountInMinute=" + maxCallCountInMinute
+				+ ", isFlowController=" + isFlowController + "]";
 	}
 
 }

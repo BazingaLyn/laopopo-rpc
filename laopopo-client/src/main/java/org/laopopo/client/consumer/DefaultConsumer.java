@@ -215,16 +215,18 @@ public abstract class DefaultConsumer extends AbstractDefaultConsumer {
 
 	@Override
 	public void start() {
-		//如果连接注册中心的client初始化成功的情况下，且连接注册中心的地址不为空的时候去尝试连接注册中心
-		if(null != this.registryClientConfig && null != this.registryNettyRemotingClient){
+
+		logger.info("######### consumer start.... #########");
+		// 如果连接注册中心的client初始化成功的情况下，且连接注册中心的地址不为空的时候去尝试连接注册中心
+		if (null != this.registryClientConfig && null != this.registryNettyRemotingClient) {
 			this.registryNettyRemotingClient.start();
-			//获取到与注册中心集群的一个健康的的Netty 长连接的channel
+			// 获取到与注册中心集群的一个健康的的Netty 长连接的channel
 			getOrUpdateHealthyChannel();
 		}
-		
+
 		this.providerNettyRemotingClient.setreconnect(false);
 		this.providerNettyRemotingClient.start();
-		
+
 	}
 
 	@Override

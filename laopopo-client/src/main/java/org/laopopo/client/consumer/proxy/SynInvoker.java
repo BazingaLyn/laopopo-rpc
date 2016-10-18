@@ -50,9 +50,10 @@ public class SynInvoker {
 	}
 
 	@RuntimeType
-	public Object invoke(@Origin Method method, @AllArguments @RuntimeType Object[] args) {
+	public Object invoke(@Origin Method method, @AllArguments @RuntimeType Object[] args)  {
 		
 		RPConsumer rpcConsumer = method.getAnnotation(RPConsumer.class);
+		
 		String serviceName = rpcConsumer.serviceName();
 		LoadBalanceStrategy _balanceStrategy = balanceStrategy;
 		ChannelGroup channelGroup = consumer.loadBalance(serviceName,_balanceStrategy);
@@ -90,6 +91,7 @@ public class SynInvoker {
 		}else{
 			time = timeoutMillis == 0l ? 3000l :timeoutMillis;
 		}
+		
 		
 		RemotingTransporter request = RemotingTransporter.createRequestTransporter(LaopopoProtocol.RPC_REQUEST, body);
 		RemotingTransporter response;

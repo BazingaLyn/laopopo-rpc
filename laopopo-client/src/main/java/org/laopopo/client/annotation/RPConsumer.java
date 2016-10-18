@@ -18,6 +18,10 @@ import java.lang.annotation.Target;
 @Documented
 public @interface RPConsumer {
 	
-	public String serviceName() default "";
+	public String serviceName() default "";          //服务名
+	
+	public boolean isRequestCompress() default false;//请求是否压缩
+	
+	public boolean isResultCompress() default false; //返回是否压缩
 
 }

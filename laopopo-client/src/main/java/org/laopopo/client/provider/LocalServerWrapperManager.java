@@ -40,7 +40,6 @@ public class LocalServerWrapperManager {
 	
 	private ProviderRegistryController providerController;
 	
-
 	public LocalServerWrapperManager(ProviderRegistryController providerRegistryController) {
 		this.providerController = providerRegistryController;
 	}
@@ -79,6 +78,7 @@ public class LocalServerWrapperManager {
 						commonCustomHeader.setVIPService(serviceWrapper.isVIPService());
 						commonCustomHeader.setWeight(serviceWrapper.getWeight());
 						commonCustomHeader.setSupportDegradeService(serviceWrapper.isSupportDegradeService());
+						commonCustomHeader.setFlowController(serviceWrapper.isFlowController());
 						commonCustomHeader.setMaxCallCountInMinute(serviceWrapper.getMaxCallCountInMinute());
 						
 						RemotingTransporter remotingTransporter =  RemotingTransporter.createRequestTransporter(LaopopoProtocol.PUBLISH_SERVICE, commonCustomHeader);
@@ -164,6 +164,8 @@ public class LocalServerWrapperManager {
 							String degradeServicePath = rpcService.degradeServicePath();
 							//降级方法的描述
 							String degradeServiceDesc = rpcService.degradeServiceDesc();
+							//是否进行限流
+							boolean isFlowControl = rpcService.isFlowController();
 							//每分钟调用的最大调用次数
 							Long maxCallCount = rpcService.maxCallCountInMinute();
 							if(maxCallCount <= 0){
@@ -207,6 +209,7 @@ public class LocalServerWrapperManager {
 																			   weight,
 																			   connCount,
 																			   isVIPService,
+																			   isFlowControl,
 																			   maxCallCount);
 							//放入到一个缓存中，方便以后consumer来调取服务的时候，该来获取对应真正的编织类
 							providerController.getProviderContainer().registerService(serviceName, serviceWrapper);

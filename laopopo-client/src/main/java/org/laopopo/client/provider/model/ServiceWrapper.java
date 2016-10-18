@@ -39,12 +39,14 @@ public class ServiceWrapper {
 	private volatile int weight = DEFAULT_WEIGHT;
 	/****连接数，默认是1个****/
 	private volatile int connCount = DEFAULT_CONNECTION_COUNT;
+	/*****是否进行限流 ****/
+	private boolean isFlowController;
 	/****单位时间内最大的调用次数****/
 	private long maxCallCountInMinute = DEFAULT_MAX_CALLCOUN_TINMINUTE;
 	
 	public ServiceWrapper(Object serviceProvider, Object mockDegradeServiceProvider, String serviceName,
 			String responsiblityName, String methodName, List<Class<?>[]> paramters, boolean isSupportDegradeService, String degradeServicePath,
-			String degradeServiceDesc, int weight, int connCount,boolean isVIPService,long maxCallCountInMinute) {
+			String degradeServiceDesc, int weight, int connCount,boolean isVIPService,boolean isFlowController,long maxCallCountInMinute) {
 		this.serviceProvider = serviceProvider;
 		this.mockDegradeServiceProvider = mockDegradeServiceProvider;
 		this.serviceName = serviceName;
@@ -57,6 +59,7 @@ public class ServiceWrapper {
 		this.weight = weight;
 		this.connCount = connCount;
 		this.isVIPService = isVIPService;
+		this.isFlowController = isFlowController;
 		this.maxCallCountInMinute = maxCallCountInMinute;
 	}
 
@@ -156,6 +159,14 @@ public class ServiceWrapper {
 		this.isVIPService = isVIPService;
 	}
 
+	public boolean isFlowController() {
+		return isFlowController;
+	}
+
+	public void setFlowController(boolean isFlowController) {
+		this.isFlowController = isFlowController;
+	}
+
 	public long getMaxCallCountInMinute() {
 		return maxCallCountInMinute;
 	}
@@ -169,9 +180,8 @@ public class ServiceWrapper {
 		return "ServiceWrapper [serviceProvider=" + serviceProvider + ", mockDegradeServiceProvider=" + mockDegradeServiceProvider + ", serviceName="
 				+ serviceName + ", responsiblityName=" + responsiblityName + ", methodName=" + methodName + ", paramters=" + paramters
 				+ ", isSupportDegradeService=" + isSupportDegradeService + ", degradeServicePath=" + degradeServicePath + ", degradeServiceDesc="
-				+ degradeServiceDesc + ", isVIPService=" + isVIPService + ", weight=" + weight + ", connCount=" + connCount + ", maxCallCountInMinute="
-				+ maxCallCountInMinute + "]";
+				+ degradeServiceDesc + ", isVIPService=" + isVIPService + ", weight=" + weight + ", connCount=" + connCount + ", isFlowController="
+				+ isFlowController + ", maxCallCountInMinute=" + maxCallCountInMinute + "]";
 	}
-	 
 	
 }

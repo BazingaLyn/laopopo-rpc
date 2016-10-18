@@ -57,12 +57,17 @@ public class LaopopoProtocol {
     public static final byte HEARTBEAT = 127;
     //ACK
     public static final byte ACK = 126;
+    
+    public static final byte COMPRESS = 80;
+    
+    public static final byte UNCOMPRESS = 81;
 
     
     private byte type;
     private byte sign;
     private long id;
     private int bodyLength;
+    private byte compress;
     
 	public byte type() {
 		return type;
@@ -95,5 +100,14 @@ public class LaopopoProtocol {
     public void bodyLength(int bodyLength) {
         this.bodyLength = bodyLength;
     }
+
+	public byte compress() {
+		return compress;
+	}
+
+	public void setCompress(byte compress) {
+		this.compress = compress;
+	}
+    
 
 }

@@ -92,60 +92,68 @@ public class DefaultMonitorProcessor implements NettyRequestProcessor {
 	}
 
 	private void buildMetrics(ConcurrentMap<Address, MetricsReporter> maps, ServiceMetrics metrics) {
-		
-		if(null != maps){
-			
+
+		if (null != maps) {
+
 			Long totalCallCount = 0l;
 			Long totalFailCount = 0l;
 			Long totalTime = 0l;
 			Long totalRequestSize = 0l;
-			
-			for(Address address : maps.keySet()){
-				
-				MetricsReporter metricsReporter = maps.get(address);            
+
+			for (Address address : maps.keySet()) {
+
+				MetricsReporter metricsReporter = maps.get(address);
 				Long callCount = metricsReporter.getCallCount();
 				Long failCount = metricsReporter.getFailCount();
 				Long requestSize = metricsReporter.getRequestSize();
 				Long handlerTime = metricsReporter.getTotalReuqestTime();
-				
+
 				totalCallCount += callCount;
 				totalFailCount += failCount;
 				totalRequestSize += requestSize;
 				totalTime += handlerTime;
-				
+
 				ConcurrentMap<Address, ProviderInfo> providerConcurrentMap = metrics.getProviderMaps();
-				
+
 				ProviderInfo info = providerConcurrentMap.get(address);
-				if(info == null){
+				if (info == null) {
 					info = new ProviderInfo();
 					info.setHost(address.getHost());
 					info.setPort(address.getPort());
 					providerConcurrentMap.put(address, info);
 				}
-				
+
 				Long eachHandlerAvgTime = 0l;
 
-				if((info.getCallCount() + metricsReporter.getCallCount())!=0){
-					
-					eachHandlerAvgTime = ((info.getCallCount() - info.getFailCount()) * info.getHandlerAvgTime() + metricsReporter.getTotalReuqestTime()) / (info.getCallCount() - info.getFailCount() + metricsReporter.getCallCount() - metricsReporter.getFailCount());
-					
+				if ((info.getCallCount() - info.getFailCount() + metricsReporter.getCallCount() - metricsReporter.getFailCount()) != 0) {
+
+					eachHandlerAvgTime = ((info.getCallCount() - info.getFailCount()) * info.getHandlerAvgTime() + metricsReporter.getTotalReuqestTime())
+							/ (info.getCallCount() - info.getFailCount() + metricsReporter.getCallCount() - metricsReporter.getFailCount());
+
 				}
-				
+
 				info.setHandlerAvgTime(eachHandlerAvgTime);
 				info.setCallCount(info.getCallCount() + callCount);
 				info.setFailCount(info.getFailCount() + failCount);
 				info.setRequestSize(info.getRequestSize() + requestSize);
-				
-				
+
 			}
 			metrics.setTotalCallCount(metrics.getTotalCallCount() + totalCallCount);
 			metrics.setTotalFailCount(metrics.getTotalFailCount() + totalFailCount);
 			Long existTotalTime = (metrics.getTotalCallCount() - metrics.getTotalFailCount()) * metrics.getHandlerAvgTime();
-			
-			metrics.setHandlerAvgTime((existTotalTime+totalTime) / (metrics.getTotalCallCount() - metrics.getTotalFailCount()));
+
+			if (metrics.getTotalCallCount() - metrics.getTotalFailCount() != 0) {
+
+				metrics.setHandlerAvgTime((existTotalTime + totalTime) / (metrics.getTotalCallCount() - metrics.getTotalFailCount()));
+
+			} else {
+
+				metrics.setHandlerAvgTime(0L);
+			}
+
 			metrics.setRequestSize(metrics.getRequestSize() + totalRequestSize);
 		}
-		
+
 	}
 
 	/**
@@ -182,6 +190,7 @@ public class DefaultMonitorProcessor implements NettyRequestProcessor {
 				
 				String serviceName = metricsReporter.getServiceName();
 				ConcurrentMap<Address, MetricsReporter> maps = defaultMonitor.getGlobalMetricsReporter().get(serviceName);
+				//第一次发送统计信息的时候，map为null，需要赋值
 				if(maps == null){
 					maps = new ConcurrentHashMap<RegisterMeta.Address, MetricsReporter>();
 					defaultMonitor.getGlobalMetricsReporter().put(serviceName, maps);

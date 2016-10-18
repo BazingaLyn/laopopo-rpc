@@ -45,6 +45,9 @@ public class RemotingTransporter extends ByteHolder {
 	 * 定义该传输对象是请求还是响应信息
 	 */
 	private byte transporterType;
+	
+	
+	
 
 	protected RemotingTransporter() {
 	}

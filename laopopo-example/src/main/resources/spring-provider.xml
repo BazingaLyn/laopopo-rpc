@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+	
+	
+	<bean id="nettyClientConfig" class="org.laopopo.remoting.netty.NettyClientConfig">
+	  <!-- 配置属性可以在这边配置 -->
+	</bean>
+	
+	<bean id="nettyServerConfig" class="org.laopopo.remoting.netty.NettyServerConfig">
+	  <!-- 配置属性放在这边配置 -->
+	</bean>
+	
+	<bean id="provider" class="org.laopopo.client.provider.DefaultProvider">
+	  <constructor-arg name="clientConfig" ref="nettyClientConfig"/>
+	  <constructor-arg name="serverConfig" ref="nettyServerConfig"/>
+	</bean>
+	
+	
+	<bean id="springProviderBean" class="org.laopopo.spring.support.LaopopoSpringProviderBean">
+	   <property name="defaultProvider" ref="provider"/>
+	   <property name="listenerPort" value="8899"/>
+	   <property name="registryAddress" value="127.0.0.1:18010"/>
+	   <property name="publishObjs">
+	     <list>
+	       <bean class="org.laopopo.example.demo.service.HelloSerivceImpl"/>
+	       <bean class="org.laopopo.example.demo.service.ByeServiceImpl"/>
+	     </list>
+	   </property>
+	</bean>
+
+
+</beans>
