@@ -11,8 +11,6 @@ import java.io.IOException;
 
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.remoting.model.RemotingTransporter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.xerial.snappy.Snappy;
 
 /**
