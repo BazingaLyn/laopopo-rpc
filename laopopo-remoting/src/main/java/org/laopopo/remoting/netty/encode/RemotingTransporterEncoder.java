@@ -11,7 +11,6 @@ import java.io.IOException;
 
 import org.laopopo.common.protocal.LaopopoProtocol;
 import org.laopopo.remoting.model.RemotingTransporter;
-import org.xerial.snappy.Snappy;
 
 /**
  * 
@@ -34,10 +33,10 @@ public class RemotingTransporterEncoder extends MessageToByteEncoder<RemotingTra
 		
 		
 		byte isCompress = LaopopoProtocol.UNCOMPRESS;
-		if(body.length > 1024){
-			isCompress = LaopopoProtocol.COMPRESS;
-			body = Snappy.compress(body);
-		}
+//		if(body.length > 1024){ //经过测试，压缩之后的效率低于不压缩
+//			isCompress = LaopopoProtocol.COMPRESS;
+//			body = Snappy.compress(body);
+//		}
 		
 		out.writeShort(MAGIC). 	           //协议头
 		writeByte(msg.getTransporterType())// 传输类型 sign 是请求还是响应
