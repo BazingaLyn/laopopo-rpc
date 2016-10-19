@@ -3,7 +3,7 @@ package org.laopopo.console.model;
 /**
  * 
  * @author BazingaLyn
- * @description 管理员在管理页面发出来的请求命令
+ * @description 管理员在管理页面发出来的请求命令 TODO
  * @time 2016年9月6日
  * @modifytime
  */

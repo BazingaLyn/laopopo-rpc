@@ -81,10 +81,13 @@ public class ConsumerClient extends DefaultConsumer {
 	}
 
 	private ChannelGroup loadBalance(CopyOnWriteArrayList<ChannelGroup> group) {
+		
 		int count = group.size();
+		
 		if (count == 0) {
 			throw new IllegalArgumentException("empty elements for select");
 		}
+		
 		Object[] wcObjects = group.toArray();
 		if (count == 1) {
 			return (ChannelGroup) (wcObjects[0]);
@@ -115,7 +118,6 @@ public class ConsumerClient extends DefaultConsumer {
 				}
 			}
 		}
-
 		return (ChannelGroup) wcObjects[random.nextInt(count)];
 	}
 

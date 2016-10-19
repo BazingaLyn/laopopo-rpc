@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 /**
  * 
  * @author BazingaLyn
- * @description 信息收集的万花筒
+ * @description 信息收集的万花筒 TODO
  * @time 2016年8月17日
  * @modifytime 2016年9月1日
  */

@@ -1,10 +1,19 @@
 package org.laopopo.remoting.model;
 
 import static org.laopopo.common.protocal.LaopopoProtocol.HEAD_LENGTH;
+
 import static org.laopopo.common.protocal.LaopopoProtocol.HEARTBEAT;
 import static org.laopopo.common.protocal.LaopopoProtocol.MAGIC;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+
+/**
+ * 
+ * @author BazingaLyn
+ * @description
+ * @time
+ * @modifytime
+ */
 @SuppressWarnings("deprecation")
 public class Heartbeats {
 

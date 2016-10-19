@@ -1,5 +1,12 @@
 package org.laopopo.common.exception.rpc;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description
+ * @time
+ * @modifytime
+ */
 public class NoServiceException extends RuntimeException {
 
 	/**

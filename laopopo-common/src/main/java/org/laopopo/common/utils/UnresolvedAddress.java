@@ -1,6 +1,13 @@
 package org.laopopo.common.utils;
 
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description
+ * @time
+ * @modifytime
+ */
 public class UnresolvedAddress {
 
     private final String host;

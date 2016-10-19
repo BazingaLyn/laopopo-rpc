@@ -1,5 +1,12 @@
 package org.laopopo.common.utils;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description Key value Pojo
+ * @time
+ * @modifytime
+ */
 public class Pair<K, V> {
 
     private K key;

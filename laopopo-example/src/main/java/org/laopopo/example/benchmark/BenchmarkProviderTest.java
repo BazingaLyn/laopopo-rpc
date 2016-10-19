@@ -6,6 +6,13 @@ import org.laopopo.example.demo.service.HelloServiceBenchmark;
 import org.laopopo.remoting.netty.NettyClientConfig;
 import org.laopopo.remoting.netty.NettyServerConfig;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description 性能测试的provider端
+ * @time
+ * @modifytime
+ */
 public class BenchmarkProviderTest {
 
 	public static void main(String[] args) throws InterruptedException, RemotingException {

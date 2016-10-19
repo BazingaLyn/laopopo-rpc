@@ -5,6 +5,13 @@ import io.netty.channel.ChannelHandlerContext;
 import org.laopopo.client.provider.DefaultProvider;
 import org.laopopo.remoting.model.NettyChannelInactiveProcessor;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description provider的netty inactive触发的事件
+ * @time
+ * @modifytime
+ */
 public class DefaultProviderInactiveProcessor implements NettyChannelInactiveProcessor {
 
 	private DefaultProvider defaultProvider;

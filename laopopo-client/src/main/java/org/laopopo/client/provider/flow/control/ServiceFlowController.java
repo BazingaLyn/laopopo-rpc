@@ -7,7 +7,7 @@ import org.laopopo.common.utils.SystemClock;
 /**
  * 
  * @author BazingaLyn
- * @description
+ * @description 服务限流控制器
  * @time
  * @modifytime
  */

@@ -18,6 +18,6 @@ import java.lang.annotation.Target;
 @Documented
 public @interface RPConsumer {
 	
-	public String serviceName() default "";          //服务名
+	public String serviceName() default "";//服务名
 	
 }

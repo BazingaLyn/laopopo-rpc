@@ -1,5 +1,12 @@
 package org.laopopo.client.consumer;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description 消费端配置属性
+ * @time
+ * @modifytime
+ */
 public class ConsumerConfig {
 
 	private int retryConnectionRegistryTimes = 4;

@@ -2,6 +2,13 @@ package org.laopopo.common.exception.rpc;
 
 import java.net.SocketAddress;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description
+ * @time
+ * @modifytime
+ */
 public class RemoteException extends RuntimeException {
 
     private static final long serialVersionUID = -6516335527982400712L;

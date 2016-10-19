@@ -1,5 +1,12 @@
 package org.laopopo.common.exception.remoting;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description
+ * @time
+ * @modifytime
+ */
 public class RemotingTimeoutException extends RemotingException {
 
 	private static final long serialVersionUID = 8752267201986569541L;

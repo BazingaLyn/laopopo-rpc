@@ -8,7 +8,7 @@ import org.springframework.beans.factory.InitializingBean;
  * @author BazingaLyn
  * @description 服务提供者对spring的支持
  * @time 2016年10月17日
- * @modifytime
+ * @modifytime 2016年10月19日
  */
 public class LaopopoSpringProviderBean implements InitializingBean {
 	

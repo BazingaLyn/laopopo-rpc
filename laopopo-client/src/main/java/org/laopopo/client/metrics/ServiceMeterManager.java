@@ -15,8 +15,6 @@ public class ServiceMeterManager {
 	//key是serviceName
 	private static ConcurrentMap<String, Meter> globalMeterManager = new ConcurrentHashMap<String, Meter>();
 	
-	
-	
 	/**
 	 * 计算某个服务的调用成功率，四舍五入到个位数
 	 * @param serviceName

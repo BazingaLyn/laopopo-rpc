@@ -10,6 +10,13 @@ import org.laopopo.remoting.model.RemotingTransporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 
+ * @author BazingaLyn
+ * @description provider端注册的处理器
+ * @time
+ * @modifytime
+ */
 public class DefaultProviderRegistryProcessor implements NettyRequestProcessor {
 	
 	private static final Logger logger = LoggerFactory.getLogger(DefaultProviderRegistryProcessor.class);

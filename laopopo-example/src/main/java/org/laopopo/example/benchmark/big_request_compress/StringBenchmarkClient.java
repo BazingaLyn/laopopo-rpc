@@ -18,6 +18,10 @@ import org.slf4j.LoggerFactory;
  * @description 测试大的普通字符串(这边的字符串使用普通的字母，不使用CommonBenchmarkClient中生成char的方式，这样做的好处就是更加贴近生产环境)，压缩前后的性能提高
  * @time 2016年10月18日
  * @modifytime
+ * 
+ * 先启动BenchmarkRegistryTest
+ * 然后启动BenchmarkProviderTest
+ * 最后启动此类
  *  
  * 1k 传输经过压缩 2次测试结果
  * 2016-10-19 10:00:59.442 WARN  [main] [StringBenchmarkClient] - count=12800000

@@ -17,7 +17,7 @@ import org.laopopo.common.utils.UnresolvedAddress;
  * @author BazingaLyn
  * @description 代理工厂类，用于对服务接口的编织
  * @time 2016年9月1日
- * @modifytime
+ * @modifytime 2016年10月17日
  */
 public class ProxyFactory<T> {
 	

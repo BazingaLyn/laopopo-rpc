@@ -8,7 +8,7 @@ import org.xerial.snappy.Snappy;
 /**
  * 
  * @author BazingaLyn
- * @description
+ * @description Google的Snappy的测试
  * @time 2016年10月18日
  * @modifytime
  */
