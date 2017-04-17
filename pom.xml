@@ -16,6 +16,7 @@
 		<module>laopopo-spring-support</module>
 		<module>laopopo-monitor</module>
 		<module>laopopo-console</module>
+		<module>laopopo-serialization</module>
 	</modules>
 
 	<properties>
